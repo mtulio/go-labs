@@ -10,3 +10,7 @@ generate-certs: deps
 
 build: deps
 	go build -o ./bin/lab-server ./cmd/lab-server
+
+# build single service
+build-single:
+	go build -o ./bin/lab-server-listener ./cmd/lab-server-listener/

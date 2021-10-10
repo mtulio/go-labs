@@ -2,7 +2,6 @@ package server;
 
 import (
 	"log"
-	"fmt"
 )
 
 type ListenerOptions struct {
@@ -22,13 +21,17 @@ type Listener struct {
 	serverHC        *ServerTCP
 	//watcher       *TargetGroupWatcher
 	controllerHC    *HealthCheckController 
-	events          *chan string
+	//events          *chan string
 }
 
-func NewListener(ec *chan string, op *ListenerOptions) (*Listener, error) {
+func NewListener( op *ListenerOptions) (*Listener, error) {
 
 	// Create HC Controller
-	ctrl := HealthCheckController{}
+	ctrl := HealthCheckController{
+		Healthy: true,
+	}
+	go ctrl.RunSignalHandler()
+	go ctrl.RunTicker()
 
 	// Create Server Service
 	var srvSvc *ServerTCP
@@ -39,7 +42,6 @@ func NewListener(ec *chan string, op *ListenerOptions) (*Listener, error) {
 		srvSvc, err = NewTCPServer(
 			"service-tcp",
 			op.ServicePort,
-			ec,
 			&ctrl,
 		)
 		if err != nil {
@@ -87,7 +89,6 @@ func NewListener(ec *chan string, op *ListenerOptions) (*Listener, error) {
 		srvHC, err = NewTCPServer(
 			"hc-tcp",
 			op.HCPort,
-			ec,
 			&ctrl,
 		)
 		if err != nil {
@@ -134,7 +135,7 @@ func NewListener(ec *chan string, op *ListenerOptions) (*Listener, error) {
 
 	return &Listener{
 		options: op,
-		events: ec,
+		//events: ec,
 		serverService: srvSvc,
 		serverHC: srvHC,
 		controllerHC: &ctrl,
@@ -142,12 +143,13 @@ func NewListener(ec *chan string, op *ListenerOptions) (*Listener, error) {
 }
 
 func (l *Listener) Start() (error) {
+	SendEvent("runtime", "listener", "Starting services...")
+
 	// Start watch target
 
-	// Star HC Controller
-	
+	// Start HC Controller
+
 	// Start HC server
-	fmt.Println("Starting.....")
 	go l.serverHC.Start()
 
 	// Start Service server
