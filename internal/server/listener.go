@@ -42,6 +42,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			"service-tcp",
 			op.ServicePort,
 			&ctrl,
+			false,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -53,6 +54,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			"service-tls",
 			op.ServicePort,
 			&ctrl,
+			false,
 			op.certPem,
 			op.certKey,
 		)
@@ -61,29 +63,31 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 		}
 		ln.serverService = srvSvc
 
-	// case protoHTTP:
-	// 	srvSvc, err := NewHTTPServer(
-	// 		"service-http",
-	// 		op.servicePort,
-	// 		ec,
-	// 		&ctrl,
-	// 	)
-	// 	if err != nil {
-	// 		log.Fatal("ERROR creating Server Service", err)
-	// 	}
+	case ProtoHTTP:
+		srvSvc, err := NewHTTPServer(
+			"service-http",
+			op.ServicePort,
+			&ctrl,
+			false,
+		)
+		if err != nil {
+			log.Fatal("ERROR creating Server Service", err)
+		}
+		ln.serverService = srvSvc
 
-	// case protoHTTPS:
-	// 	srvSvc, err := NewHTTPSServer(
-	// 		"service-https",
-	// 		op.servicePort,
-	// 		ec,
-	// 		&ctrl,
-	// 		op.certPem,
-	// 		op.certKey,
-	// 	)
-	// 	if err != nil {
-	// 		log.Fatal("ERROR creating Server Service", err)
-	// 	}
+	case ProtoHTTPS:
+		srvSvc, err := NewHTTPSServer(
+			"service-https",
+			op.ServicePort,
+			&ctrl,
+			false,
+			op.certPem,
+			op.certKey,
+		)
+		if err != nil {
+			log.Fatal("ERROR creating Server Service", err)
+		}
+		ln.serverService = srvSvc
 	}
 
 	// Create Server HC
@@ -93,6 +97,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			"hc-tcp",
 			op.HCPort,
 			&ctrl,
+			true,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -104,6 +109,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			"hc-tls",
 			op.HCPort,
 			&ctrl,
+			true,
 			op.certPem,
 			op.certKey,
 		)
@@ -112,28 +118,30 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 		}
 		ln.serverHC = srvHC
 
-	// case protoHTTP:
-	// 	srvHC, err := NewHTTPServer(
-	// 		"hc-http",
-	// 		op.servicePort,
-	// 		ec,
-	// 		&ctrl,
-	// 	)
-	// 	if err != nil {
-	// 		log.Fatal("ERROR creating Server HC", err)
-	// 	}
-	// case protoHTTPS:
-	// 	srvHC, err := NewHTTPSServer(
-	// 		"hc-https",
-	// 		op.servicePort,
-	// 		ec,
-	// 		&ctrl,
-	// 		op.certPem,
-	// 		op.certKey,
-	// 	)
-	// 	if err != nil {
-	// 		log.Fatal("ERROR creating Server HC", err)
-	// 	}
+	case ProtoHTTP:
+		srvHC, err := NewHTTPServer(
+			"hc-http",
+			op.HCPort,
+			&ctrl,
+			true,
+		)
+		if err != nil {
+			log.Fatal("ERROR creating Server HC", err)
+		}
+		ln.serverHC = srvHC
+	case ProtoHTTPS:
+		srvHC, err := NewHTTPSServer(
+			"hc-https",
+			op.HCPort,
+			&ctrl,
+			true,
+			op.certPem,
+			op.certKey,
+		)
+		if err != nil {
+			log.Fatal("ERROR creating Server HC", err)
+		}
+		ln.serverHC = srvHC
 	}
 
 	return &ln, nil

@@ -9,9 +9,9 @@ func main() {
 	readyToShutdown := make(chan struct{})
 	
 	lnc := server.ListenerOptions{
-		ServiceProto: server.ProtoTCP,
+		ServiceProto: server.ProtoHTTP,
 		ServicePort: 30300,
-		HCProto: server.ProtoTCP,
+		HCProto: server.ProtoHTTP,
 		HCPort: 30301,
 	}
 

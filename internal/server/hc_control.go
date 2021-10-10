@@ -81,6 +81,9 @@ func (hc *HealthCheckController) runSignalHandler() {
 	}
 }
 
+func (hc *HealthCheckController) GetHealthy() bool {
+	return hc.Healthy
+}
 
 // Returns healthy/unhealthy string
 func (hc *HealthCheckController) GetHealthyStr() string {

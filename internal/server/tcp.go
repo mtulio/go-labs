@@ -21,8 +21,8 @@ type ServerTCP struct {
 func NewTCPServer(
 	name string,
 	port uint64,
-	//events *chan string,
 	ctrl *HealthCheckController,
+	hcServer bool,
 ) (*ServerTCP, error) {
 	log.SetFlags(log.Lshortfile)
 
@@ -30,8 +30,8 @@ func NewTCPServer(
 		proto: ProtoTCP,
 		name: name,
 		port: port,
-		//events: events,
 		hcControl: ctrl,
+		hcServer: hcServer,
 	}
 
 	SendEvent("runtime", name, "Server TCP Created")
@@ -99,8 +99,8 @@ type ServerTLS struct {
 func NewTLSServer(
 	name string,
 	port uint64,
-	//events *chan string,
 	ctrl *HealthCheckController,
+	hcServer bool,
 	certKey string,
 	certPem string,
 ) (*ServerTLS, error) {
@@ -112,6 +112,8 @@ func NewTLSServer(
 		name: name,
 		port: port,
 		//events: events,
+		hcControl: ctrl,
+		hcServer: hcServer,
 		certKey: certKey,
 		certPem: certPem,
 	}
