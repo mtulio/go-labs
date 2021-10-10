@@ -17,8 +17,6 @@ type HealthCheckController struct {
 	HealthSince time.Time
 	UnhealthSince time.Time
 
-	//SignalsReceived uint8
-
 	// Return true when termination is in Progress
 	terminationInProgress bool
 
@@ -27,14 +25,13 @@ type HealthCheckController struct {
 
 	// TerminationTimer is the counter when Termination
 	// flag is set. It should not be 0.
-	//TerminationTicker uint64
-
 	terminationStartTime time.Time
 
 	//events *chan string
 
 	//termChan chan os.Signal
 
+	// mutex
 	locker sync.Mutex
 }
 
@@ -42,17 +39,21 @@ func NewHealthCheckController(events *chan string) *HealthCheckController {
 	hc := HealthCheckController{
 		Healthy: true,
 		terminationInProgress: false,
-		//SignalsReceived: 0,
 		terminationTimeout: 30.0,
-		//termChan: make(chan os.Signal),
-		//events: events,
 	}
 	//signal.Notify(hc.termChan, syscall.SIGTERM)
 	return &hc
 }
 
+func (hc *HealthCheckController) Start() {
+	go hc.runSignalHandler()
+	go hc.runTicker()
+}
 
-func (hc *HealthCheckController) RunSignalHandler() {
+// Handle SiGTERM signal, if it was sent twice the termination
+// will be forced. Otherwise the timeout ticket will clear the
+// process for a while.
+func (hc *HealthCheckController) runSignalHandler() {
 	
 	for {
 		msg := ("Running Signal handler")
@@ -78,7 +79,15 @@ func (hc *HealthCheckController) RunSignalHandler() {
 		termChan = make(chan os.Signal)
 		signal.Notify(termChan, syscall.SIGTERM)
 	}
+}
 
+
+// Returns healthy/unhealthy string
+func (hc *HealthCheckController) GetHealthyStr() string {
+	if hc.Healthy {
+		return "healthy"
+	}
+	return "unhealthy"
 }
 
 func (hc *HealthCheckController) StartHealth() {
@@ -116,7 +125,7 @@ func (hc *HealthCheckController) StopTermination() {
 
 // Run Termination checker until timeout, then reset to
 // Healthy state
-func (hc *HealthCheckController) RunTicker() {
+func (hc *HealthCheckController) runTicker() {
 
 	for {
 		if !(hc.terminationInProgress) {
@@ -136,9 +145,3 @@ func (hc *HealthCheckController) RunTicker() {
 	}
 
 }
-
-// func SetupSignal() (chan os.Signal) {
-// 	termChan := make(chan os.Signal)
-// 	signal.Notify(termChan, syscall.SIGTERM)
-// 	return termChan
-// }

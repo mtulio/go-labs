@@ -17,8 +17,8 @@ type ListenerOptions struct {
 
 type Listener struct {
 	options         *ListenerOptions
-	serverService   *ServerTCP
-	serverHC        *ServerTCP
+	serverService   Server
+	serverHC        Server
 	//watcher       *TargetGroupWatcher
 	controllerHC    *HealthCheckController 
 	//events          *chan string
@@ -30,16 +30,15 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	ctrl := HealthCheckController{
 		Healthy: true,
 	}
-	go ctrl.RunSignalHandler()
-	go ctrl.RunTicker()
 
-	// Create Server Service
-	var srvSvc *ServerTCP
-	var srvHC *ServerTCP
-	var err error
+	ln := Listener{
+		options: op,
+		controllerHC: &ctrl,
+	}
+
 	switch(op.ServiceProto) {
 	case ProtoTCP:
-		srvSvc, err = NewTCPServer(
+		srvSvc, err := NewTCPServer(
 			"service-tcp",
 			op.ServicePort,
 			&ctrl,
@@ -47,18 +46,21 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
 		}
-	// case ProtoTLS:
-	// 	srvSvc, err = NewTLSServer(
-	// 		"service-tls",
-	// 		op.ServicePort,
-	// 		ec,
-	// 		&ctrl,
-	// 		op.certPem,
-	// 		op.certKey,
-	// 	)
-	// 	if err != nil {
-	// 		log.Fatal("ERROR creating Server Service", err)
-	// 	}
+		ln.serverService = srvSvc
+
+	case ProtoTLS:
+		srvSvc, err := NewTLSServer(
+			"service-tls",
+			op.ServicePort,
+			&ctrl,
+			op.certPem,
+			op.certKey,
+		)
+		if err != nil {
+			log.Fatal("ERROR creating Server Service", err)
+		}
+		ln.serverService = srvSvc
+
 	// case protoHTTP:
 	// 	srvSvc, err := NewHTTPServer(
 	// 		"service-http",
@@ -69,6 +71,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	// 	if err != nil {
 	// 		log.Fatal("ERROR creating Server Service", err)
 	// 	}
+
 	// case protoHTTPS:
 	// 	srvSvc, err := NewHTTPSServer(
 	// 		"service-https",
@@ -86,7 +89,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	// Create Server HC
 	switch(op.HCProto) {
 	case ProtoTCP:
-		srvHC, err = NewTCPServer(
+		srvHC, err := NewTCPServer(
 			"hc-tcp",
 			op.HCPort,
 			&ctrl,
@@ -94,18 +97,21 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
 		}
-	// case ProtoTLS:
-	// 	srvHC, err = NewTLSServer(
-	// 		"hc-tls",
-	// 		op.HCPort,
-	// 		ec,
-	// 		&ctrl,
-	// 		op.certPem,
-	// 		op.certKey,
-	// 	)
-	// 	if err != nil {
-	// 		log.Fatal("ERROR creating Server HC", err)
-	// 	}
+		ln.serverHC = srvHC
+
+	case ProtoTLS:
+		srvHC, err := NewTLSServer(
+			"hc-tls",
+			op.HCPort,
+			&ctrl,
+			op.certPem,
+			op.certKey,
+		)
+		if err != nil {
+			log.Fatal("ERROR creating Server HC", err)
+		}
+		ln.serverHC = srvHC
+
 	// case protoHTTP:
 	// 	srvHC, err := NewHTTPServer(
 	// 		"hc-http",
@@ -130,24 +136,17 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	// 	}
 	}
 
-	// Create TG Watcher
-	//ToDo
-
-	return &Listener{
-		options: op,
-		//events: ec,
-		serverService: srvSvc,
-		serverHC: srvHC,
-		controllerHC: &ctrl,
-	}, nil
+	return &ln, nil
 }
 
 func (l *Listener) Start() (error) {
 	SendEvent("runtime", "listener", "Starting services...")
 
-	// Start watch target
+	// Start LoadBalancer/TargetGroup watcher
+	//ToDo
 
 	// Start HC Controller
+	go l.controllerHC.Start()
 
 	// Start HC server
 	go l.serverHC.Start()
