@@ -5,6 +5,14 @@ import (
 	"github.com/mtulio/go-lab-api/internal/server"
 )
 
+func init() {
+	// input
+	// --service-proto --service-port 
+	// --health-check-proto --health-check-port --health-check-path
+	// --watch-aws-tg-arn
+	// --termination-timeout
+}
+
 func main() {
 	readyToShutdown := make(chan struct{})
 	

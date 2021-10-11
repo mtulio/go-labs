@@ -39,7 +39,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	switch(op.ServiceProto) {
 	case ProtoTCP:
 		srvSvc, err := NewTCPServer(
-			"service-tcp",
+			"server-service-tcp",
 			op.ServicePort,
 			&ctrl,
 			false,
@@ -51,7 +51,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 
 	case ProtoTLS:
 		srvSvc, err := NewTLSServer(
-			"service-tls",
+			"server-service-tls",
 			op.ServicePort,
 			&ctrl,
 			false,
@@ -65,7 +65,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 
 	case ProtoHTTP:
 		srvSvc, err := NewHTTPServer(
-			"service-http",
+			"server-service-http",
 			op.ServicePort,
 			&ctrl,
 			false,
@@ -77,7 +77,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 
 	case ProtoHTTPS:
 		srvSvc, err := NewHTTPSServer(
-			"service-https",
+			"server-service-https",
 			op.ServicePort,
 			&ctrl,
 			false,
@@ -94,7 +94,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	switch(op.HCProto) {
 	case ProtoTCP:
 		srvHC, err := NewTCPServer(
-			"hc-tcp",
+			"server-hc-tcp",
 			op.HCPort,
 			&ctrl,
 			true,
@@ -106,7 +106,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 
 	case ProtoTLS:
 		srvHC, err := NewTLSServer(
-			"hc-tls",
+			"server-hc-tls",
 			op.HCPort,
 			&ctrl,
 			true,
@@ -120,7 +120,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 
 	case ProtoHTTP:
 		srvHC, err := NewHTTPServer(
-			"hc-http",
+			"server-hc-http",
 			op.HCPort,
 			&ctrl,
 			true,
@@ -131,7 +131,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 		ln.serverHC = srvHC
 	case ProtoHTTPS:
 		srvHC, err := NewHTTPSServer(
-			"hc-https",
+			"server-hc-https",
 			op.HCPort,
 			&ctrl,
 			true,
