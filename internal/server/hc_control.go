@@ -1,10 +1,11 @@
-package server;
+package server
 
 import (
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
 	//"log"
 	"sync"
 )
@@ -14,7 +15,7 @@ type HealthCheckController struct {
 	// flag is not set.
 	Healthy bool
 
-	HealthSince time.Time
+	HealthSince   time.Time
 	UnhealthSince time.Time
 
 	// Return true when termination is in Progress
@@ -33,13 +34,16 @@ type HealthCheckController struct {
 
 	// mutex
 	locker sync.Mutex
+
+	Event *EventHandler
 }
 
-func NewHealthCheckController(events *chan string) *HealthCheckController {
+func NewHealthCheckController(ev *EventHandler) *HealthCheckController {
 	hc := HealthCheckController{
-		Healthy: true,
+		Healthy:               true,
 		terminationInProgress: false,
-		terminationTimeout: 30.0,
+		terminationTimeout:    30.0,
+		Event:                 ev,
 	}
 	//signal.Notify(hc.termChan, syscall.SIGTERM)
 	return &hc
@@ -54,28 +58,28 @@ func (hc *HealthCheckController) Start() {
 // will be forced. Otherwise the timeout ticket will clear the
 // process for a while.
 func (hc *HealthCheckController) runSignalHandler() {
-	
+
 	for {
 		msg := ("Running Signal handler")
-		SendEvent("runtime", "hc-controller", msg)
-		
+		hc.Event.Send("runtime", "hc-controller", msg)
+
 		termChan := make(chan os.Signal)
 		signal.Notify(termChan, syscall.SIGTERM)
-	
+
 		<-termChan
 
 		msg = ("Termination Signal receievd")
-		SendEvent("runtime", "hc-controller", msg)
+		hc.Event.Send("runtime", "hc-controller", msg)
 
 		if hc.terminationInProgress {
 			msg = ("Termination already in progress, forcing termination.")
-			SendEvent("runtime", "hc-controller", msg)
+			hc.Event.Send("runtime", "hc-controller", msg)
 			os.Exit(0)
 		}
 
 		hc.StartTermination()
 		hc.StartUnhealth()
-		
+
 		termChan = make(chan os.Signal)
 		signal.Notify(termChan, syscall.SIGTERM)
 	}
@@ -104,7 +108,7 @@ func (hc *HealthCheckController) StartHealth() {
 
 func (hc *HealthCheckController) StartUnhealth() {
 	hc.locker.Lock()
-	
+
 	// Set Start time only when Unhealthy is started
 	if hc.Healthy {
 		hc.UnhealthSince = time.Now()
@@ -139,7 +143,7 @@ func (hc *HealthCheckController) runTicker() {
 		// Timeout 300s
 		if time.Since(hc.terminationStartTime).Seconds() >= 30 {
 			//log.Println("Restoring to Healthy state...")
-			SendEvent("runtime", "hc-controller", "Restoring to Health State")
+			hc.Event.Send("runtime", "hc-controller", "Restoring to Health State")
 			hc.StartHealth()
 			hc.StopTermination()
 		}

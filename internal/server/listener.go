@@ -21,19 +21,18 @@ type Listener struct {
 	serverHC      Server
 	//watcher       *TargetGroupWatcher
 	controllerHC *HealthCheckController
-	//events          *chan string
+	Event        *EventHandler
 }
 
-func NewListener(op *ListenerOptions) (*Listener, error) {
+func NewListener(op *ListenerOptions, ev *EventHandler) (*Listener, error) {
 
 	// Create HC Controller
-	ctrl := HealthCheckController{
-		Healthy: true,
-	}
+	ctrl := NewHealthCheckController(ev)
 
 	ln := Listener{
 		options:      op,
-		controllerHC: &ctrl,
+		controllerHC: ctrl,
+		Event:        ev,
 	}
 
 	switch op.ServiceProto {
@@ -41,8 +40,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvSvc, err := NewTCPServer(
 			"server-service-tcp",
 			op.ServicePort,
-			&ctrl,
+			ctrl,
 			false,
+			ev,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -53,8 +53,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvSvc, err := NewTLSServer(
 			"server-service-tls",
 			op.ServicePort,
-			&ctrl,
+			ctrl,
 			false,
+			ev,
 			op.CertPem,
 			op.CertKey,
 		)
@@ -67,8 +68,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvSvc, err := NewHTTPServer(
 			"server-service-http",
 			op.ServicePort,
-			&ctrl,
+			ctrl,
 			false,
+			ev,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -79,8 +81,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvSvc, err := NewHTTPSServer(
 			"server-service-https",
 			op.ServicePort,
-			&ctrl,
+			ctrl,
 			false,
+			ev,
 			op.CertPem,
 			op.CertKey,
 		)
@@ -96,8 +99,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvHC, err := NewTCPServer(
 			"server-hc-tcp",
 			op.HCPort,
-			&ctrl,
+			ctrl,
 			true,
+			ev,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -108,8 +112,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvHC, err := NewTLSServer(
 			"server-hc-tls",
 			op.HCPort,
-			&ctrl,
+			ctrl,
 			true,
+			ev,
 			op.CertPem,
 			op.CertKey,
 		)
@@ -122,8 +127,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvHC, err := NewHTTPServer(
 			"server-hc-http",
 			op.HCPort,
-			&ctrl,
+			ctrl,
 			true,
+			ev,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -133,8 +139,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		srvHC, err := NewHTTPSServer(
 			"server-hc-https",
 			op.HCPort,
-			&ctrl,
+			ctrl,
 			true,
+			ev,
 			op.CertPem,
 			op.CertKey,
 		)
@@ -148,7 +155,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 }
 
 func (l *Listener) Start() error {
-	SendEvent("runtime", "listener", "Starting services...")
+	l.Event.Send("runtime", "listener", "Starting services...")
 
 	// Start LoadBalancer/TargetGroup watcher
 	//ToDo

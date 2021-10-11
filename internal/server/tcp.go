@@ -1,19 +1,19 @@
-package server;
+package server
 
 import (
-	"net"
-	"log"
-	"fmt"
-	"crypto/tls"
 	"bufio"
+	"crypto/tls"
+	"fmt"
+	"log"
+	"net"
 )
 
 type ServerTCP struct {
-	proto Protocol
-	name     string
-	port     uint64
-	listener net.Listener
-	events   *chan string
+	proto     Protocol
+	name      string
+	port      uint64
+	listener  net.Listener
+	Event     *EventHandler
 	hcServer  bool
 	hcControl *HealthCheckController
 }
@@ -23,25 +23,27 @@ func NewTCPServer(
 	port uint64,
 	ctrl *HealthCheckController,
 	hcServer bool,
+	ev *EventHandler,
 ) (*ServerTCP, error) {
 	log.SetFlags(log.Lshortfile)
 
-	server := ServerTCP{
-		proto: ProtoTCP,
-		name: name,
-		port: port,
+	srv := ServerTCP{
+		proto:     ProtoTCP,
+		name:      name,
+		port:      port,
 		hcControl: ctrl,
-		hcServer: hcServer,
+		hcServer:  hcServer,
+		Event:     ev,
 	}
 
-	SendEvent("runtime", name, "Server TCP Created")
-	return &server, nil
+	srv.Event.Send("runtime", name, "Server TCP Created")
+	return &srv, nil
 }
 
 func (srv *ServerTCP) Start() {
 	msg := fmt.Sprintf("Creating TCP server on port %d\n", srv.port)
-	SendEvent("runtime", srv.name, msg)
-	
+	srv.Event.Send("runtime", srv.name, msg)
+
 	portStr := fmt.Sprintf(":%d", srv.port)
 	ln, err := net.Listen("tcp", portStr)
 	if err != nil {
@@ -52,7 +54,7 @@ func (srv *ServerTCP) Start() {
 	srv.listener = ln
 
 	msg = fmt.Sprintf("Starting TCP server on port %d\n", srv.port)
-	SendEvent("runtime", srv.name, msg)
+	srv.Event.Send("runtime", srv.name, msg)
 	for {
 		conn, err := srv.listener.Accept()
 		if err != nil {
@@ -73,7 +75,7 @@ func (srv *ServerTCP) connHandler(conn net.Conn) {
 			return
 		}
 
-		SendEvent("request", srv.name, msg)
+		srv.Event.Send("request", srv.name, msg)
 
 		healthy := fmt.Sprintf("%s\n", srv.hcControl.GetHealthyStr())
 		n, err := conn.Write([]byte(healthy))
@@ -85,15 +87,15 @@ func (srv *ServerTCP) connHandler(conn net.Conn) {
 }
 
 type ServerTLS struct {
-	proto Protocol
-	name string
-	port uint64
-	listener net.Listener
-	//events *chan string
+	proto     Protocol
+	name      string
+	port      uint64
+	listener  net.Listener
+	Event     *EventHandler
 	hcServer  bool
 	hcControl *HealthCheckController
-	certKey string
-	certPem string
+	certKey   string
+	certPem   string
 }
 
 func NewTLSServer(
@@ -101,6 +103,7 @@ func NewTLSServer(
 	port uint64,
 	ctrl *HealthCheckController,
 	hcServer bool,
+	ev *EventHandler,
 	certKey string,
 	certPem string,
 ) (*ServerTLS, error) {
@@ -108,18 +111,18 @@ func NewTLSServer(
 	log.SetFlags(log.Lshortfile)
 
 	srv := ServerTLS{
-		proto: ProtoTLS,
-		name: name,
-		port: port,
-		//events: events,
+		proto:     ProtoTLS,
+		name:      name,
+		port:      port,
+		Event:     ev,
 		hcControl: ctrl,
-		hcServer: hcServer,
-		certKey: certKey,
-		certPem: certPem,
+		hcServer:  hcServer,
+		certKey:   certKey,
+		certPem:   certPem,
 	}
 
 	//*srv.events<-"Server Created"
-	SendEvent("runtime", name, "Server TLS Created")
+	srv.Event.Send("runtime", name, "Server TLS Created")
 	return &srv, nil
 }
 
@@ -142,7 +145,7 @@ func (srv *ServerTLS) Start() {
 	srv.listener = ln
 
 	msg := fmt.Sprintf("Starting TLS server on port %d\n", srv.port)
-	SendEvent("runtime", srv.name, msg)
+	srv.Event.Send("runtime", srv.name, msg)
 	for {
 		conn, err := srv.listener.Accept()
 		if err != nil {
@@ -163,7 +166,7 @@ func (srv *ServerTLS) connHandler(conn net.Conn) {
 			return
 		}
 
-		SendEvent("request", srv.name, msg)
+		srv.Event.Send("request", srv.name, msg)
 
 		healthy := fmt.Sprintf("%s\n", srv.hcControl.GetHealthyStr())
 		n, err := conn.Write([]byte(healthy))

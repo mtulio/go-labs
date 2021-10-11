@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	flag "github.com/spf13/pflag"
@@ -11,7 +10,7 @@ import (
 
 var (
 	appName     *string = flag.String("app-name", "myApp", "help message for flagname")
-	logPath     *string = flag.String("log-path", "./myApp.log", "help message for flagname")
+	logPath     *string = flag.String("log-path", "", "help message for flagname")
 	svcProto    *string = flag.String("service-proto", "http", "help message for flagname")
 	svcPort     *uint64 = flag.Uint64("service-port", 30300, "help message for flagname")
 	certPem     *string = flag.String("cert-pem", "", "help message for flagname")
@@ -30,14 +29,12 @@ func init() {
 	// --watch-aws-tg-arn
 	// --termination-timeout
 	flag.Parse()
-
-	fmt.Println(*appName)
 }
 
 func main() {
 	readyToShutdown := make(chan struct{})
 
-	server.AppName = *appName
+	ev := server.NewEventHandler(*appName, *logPath)
 
 	lnc := server.ListenerOptions{
 		ServiceProto: server.GetProtocolByString(*svcProto),
@@ -49,7 +46,7 @@ func main() {
 		CertKey:      *certKey,
 	}
 
-	ln, err := server.NewListener(&lnc)
+	ln, err := server.NewListener(&lnc, ev)
 	if err != nil {
 		log.Fatal("ERROR Creating the listener")
 	}
