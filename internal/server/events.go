@@ -44,7 +44,7 @@ func (ev *EventHandler) SendEvent(tp, name, msg string) {
 
 func (ev *EventHandler) Send(tp, name, msg string) {
 	ev.logr.WithFields(logrus.Fields{
-		"app-name": ev.AppName,
+		"app":      ev.AppName,
 		"type":     tp,
 		"resource": name,
 	}).Info(msg)
