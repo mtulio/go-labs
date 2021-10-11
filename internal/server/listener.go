@@ -1,30 +1,30 @@
-package server;
+package server
 
 import (
 	"log"
 )
 
 type ListenerOptions struct {
-	ServiceProto Protocol
-	ServicePort uint64
-	HCProto Protocol
-	HCPort uint64
-	hcPath string
-	targetGroupARN string
-	certPem string
-	certKey string
+	ServiceProto   Protocol
+	ServicePort    uint64
+	HCProto        Protocol
+	HCPort         uint64
+	HCPath         string
+	TargetGroupARN string
+	CertPem        string
+	CertKey        string
 }
 
 type Listener struct {
-	options         *ListenerOptions
-	serverService   Server
-	serverHC        Server
+	options       *ListenerOptions
+	serverService Server
+	serverHC      Server
 	//watcher       *TargetGroupWatcher
-	controllerHC    *HealthCheckController 
+	controllerHC *HealthCheckController
 	//events          *chan string
 }
 
-func NewListener( op *ListenerOptions) (*Listener, error) {
+func NewListener(op *ListenerOptions) (*Listener, error) {
 
 	// Create HC Controller
 	ctrl := HealthCheckController{
@@ -32,11 +32,11 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	}
 
 	ln := Listener{
-		options: op,
+		options:      op,
 		controllerHC: &ctrl,
 	}
 
-	switch(op.ServiceProto) {
+	switch op.ServiceProto {
 	case ProtoTCP:
 		srvSvc, err := NewTCPServer(
 			"server-service-tcp",
@@ -55,8 +55,8 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			op.ServicePort,
 			&ctrl,
 			false,
-			op.certPem,
-			op.certKey,
+			op.CertPem,
+			op.CertKey,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -81,8 +81,8 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			op.ServicePort,
 			&ctrl,
 			false,
-			op.certPem,
-			op.certKey,
+			op.CertPem,
+			op.CertKey,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -91,7 +91,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	}
 
 	// Create Server HC
-	switch(op.HCProto) {
+	switch op.HCProto {
 	case ProtoTCP:
 		srvHC, err := NewTCPServer(
 			"server-hc-tcp",
@@ -110,8 +110,8 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			op.HCPort,
 			&ctrl,
 			true,
-			op.certPem,
-			op.certKey,
+			op.CertPem,
+			op.CertKey,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -135,8 +135,8 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 			op.HCPort,
 			&ctrl,
 			true,
-			op.certPem,
-			op.certKey,
+			op.CertPem,
+			op.CertKey,
 		)
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -147,7 +147,7 @@ func NewListener( op *ListenerOptions) (*Listener, error) {
 	return &ln, nil
 }
 
-func (l *Listener) Start() (error) {
+func (l *Listener) Start() error {
 	SendEvent("runtime", "listener", "Starting services...")
 
 	// Start LoadBalancer/TargetGroup watcher

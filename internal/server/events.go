@@ -1,9 +1,11 @@
-
-
-package server;
+package server
 
 import (
 	zlog "github.com/rs/zerolog/log"
+)
+
+var (
+	AppName = "my-default-app"
 )
 
 func SendEvent(tp, name, msg string) {

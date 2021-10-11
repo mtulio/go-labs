@@ -1,5 +1,4 @@
-package server;
-
+package server
 
 type Protocol uint8
 
@@ -16,4 +15,18 @@ type Server interface {
 	//GetType() string
 	//GetState() bool
 	//SetState(value bool) error
+}
+
+func GetProtocolByString(proto string) Protocol {
+	switch proto {
+	case "tcp":
+		return ProtoTCP
+	case "tls":
+		return ProtoTLS
+	case "http":
+		return ProtoHTTP
+	case "https":
+		return ProtoHTTPS
+	}
+	return ProtoHTTP
 }
