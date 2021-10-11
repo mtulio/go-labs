@@ -1,17 +1,21 @@
 package server
 
 import (
-	zlog "github.com/rs/zerolog/log"
+	logr "github.com/sirupsen/logrus"
 )
 
 var (
 	AppName = "my-default-app"
 )
 
+func init() {
+	logr.SetFormatter(&logr.JSONFormatter{})
+}
+
 func SendEvent(tp, name, msg string) {
-	zlog.Info().
-		Str("app-name", AppName).
-		Str("type", tp).
-		Str("resource", name).
-		Msg(msg)
+	logr.WithFields(logr.Fields{
+		"app-name": AppName,
+		"type":     tp,
+		"resource": name,
+	}).Info(msg)
 }
