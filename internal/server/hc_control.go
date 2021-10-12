@@ -36,14 +36,22 @@ type HealthCheckController struct {
 	locker sync.Mutex
 
 	Event *EventHandler
+
+	Metric *MetricsHandler
 }
 
-func NewHealthCheckController(ev *EventHandler) *HealthCheckController {
+type HCControllerOpts struct {
+	Event  *EventHandler
+	Metric *MetricsHandler
+}
+
+func NewHealthCheckController(op *HCControllerOpts) *HealthCheckController {
 	hc := HealthCheckController{
 		Healthy:               true,
 		terminationInProgress: false,
 		terminationTimeout:    30.0,
-		Event:                 ev,
+		Event:                 op.Event,
+		Metric:                op.Metric,
 	}
 	//signal.Notify(hc.termChan, syscall.SIGTERM)
 	return &hc
@@ -103,6 +111,7 @@ func (hc *HealthCheckController) StartHealth() {
 	hc.locker.Lock()
 	hc.Healthy = true
 	hc.HealthSince = time.Now()
+	hc.Metric.AppHealthy = hc.Healthy
 	hc.locker.Unlock()
 }
 
@@ -114,6 +123,7 @@ func (hc *HealthCheckController) StartUnhealth() {
 		hc.UnhealthSince = time.Now()
 	}
 	hc.Healthy = false
+	hc.Metric.AppHealthy = hc.Healthy
 	hc.locker.Unlock()
 }
 

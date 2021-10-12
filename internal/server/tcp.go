@@ -9,58 +9,70 @@ import (
 )
 
 type ServerTCP struct {
-	proto     Protocol
-	name      string
-	port      uint64
-	listener  net.Listener
-	Event     *EventHandler
-	hcServer  bool
-	hcControl *HealthCheckController
+	listener net.Listener
+	config   *ServerConfig
 }
 
-func NewTCPServer(
-	name string,
-	port uint64,
-	ctrl *HealthCheckController,
-	hcServer bool,
-	ev *EventHandler,
-) (*ServerTCP, error) {
+func NewTCPServer(cfg *ServerConfig) (*ServerTCP, error) {
 	log.SetFlags(log.Lshortfile)
 
 	srv := ServerTCP{
-		proto:     ProtoTCP,
-		name:      name,
-		port:      port,
-		hcControl: ctrl,
-		hcServer:  hcServer,
-		Event:     ev,
+		config: cfg,
 	}
 
-	srv.Event.Send("runtime", name, "Server TCP Created")
+	srv.config.event.Send(
+		"runtime", cfg.name, "Server TCP Created",
+	)
 	return &srv, nil
 }
 
 func (srv *ServerTCP) Start() {
-	msg := fmt.Sprintf("Creating TCP server on port %d\n", srv.port)
-	srv.Event.Send("runtime", srv.name, msg)
+	protoName := "TCP"
 
-	portStr := fmt.Sprintf(":%d", srv.port)
-	ln, err := net.Listen("tcp", portStr)
-	if err != nil {
-		log.Fatal(err)
+	if srv.config.proto == ProtoTLS {
+		protoName = "TLS"
+		msg := fmt.Sprintf("Creating %s server on port %d\n", protoName, srv.config.port)
+		srv.config.event.Send("runtime", srv.config.name, msg)
+
+		cer, err := tls.LoadX509KeyPair(
+			srv.config.certPem, srv.config.certKey,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
+		portStr := fmt.Sprintf(":%d", srv.config.port)
+
+		ln, err := tls.Listen("tcp", portStr, tlsConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer ln.Close()
+		srv.listener = ln
+
+	} else {
+		msg := fmt.Sprintf("Creating %s server on port %d\n", protoName, srv.config.port)
+		srv.config.event.Send("runtime", srv.config.name, msg)
+
+		portStr := fmt.Sprintf(":%d", srv.config.port)
+		ln, err := net.Listen("tcp", portStr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer ln.Close()
+		srv.listener = ln
 	}
-	defer ln.Close()
 
-	srv.listener = ln
-
-	msg = fmt.Sprintf("Starting TCP server on port %d\n", srv.port)
-	srv.Event.Send("runtime", srv.name, msg)
+	msg := fmt.Sprintf("Starting %s server on port %d\n", protoName, srv.config.port)
+	srv.config.event.Send("runtime", srv.config.name, msg)
 	for {
 		conn, err := srv.listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+		fmt.Println("Accepted...calling handler...")
 		go srv.connHandler(conn)
 	}
 }
@@ -75,100 +87,14 @@ func (srv *ServerTCP) connHandler(conn net.Conn) {
 			return
 		}
 
-		srv.Event.Send("request", srv.name, msg)
-
-		healthy := fmt.Sprintf("%s\n", srv.hcControl.GetHealthyStr())
-		n, err := conn.Write([]byte(healthy))
-		if err != nil {
-			log.Println(n, err)
-			return
-		}
-	}
-}
-
-type ServerTLS struct {
-	proto     Protocol
-	name      string
-	port      uint64
-	listener  net.Listener
-	Event     *EventHandler
-	hcServer  bool
-	hcControl *HealthCheckController
-	certKey   string
-	certPem   string
-}
-
-func NewTLSServer(
-	name string,
-	port uint64,
-	ctrl *HealthCheckController,
-	hcServer bool,
-	ev *EventHandler,
-	certKey string,
-	certPem string,
-) (*ServerTLS, error) {
-
-	log.SetFlags(log.Lshortfile)
-
-	srv := ServerTLS{
-		proto:     ProtoTLS,
-		name:      name,
-		port:      port,
-		Event:     ev,
-		hcControl: ctrl,
-		hcServer:  hcServer,
-		certKey:   certKey,
-		certPem:   certPem,
-	}
-
-	//*srv.events<-"Server Created"
-	srv.Event.Send("runtime", name, "Server TLS Created")
-	return &srv, nil
-}
-
-func (srv *ServerTLS) Start() {
-
-	cer, err := tls.LoadX509KeyPair(srv.certPem, srv.certKey)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cer}}
-	portStr := fmt.Sprintf(":%d", srv.port)
-
-	ln, err := tls.Listen("tcp", portStr, tlsConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer ln.Close()
-
-	srv.listener = ln
-
-	msg := fmt.Sprintf("Starting TLS server on port %d\n", srv.port)
-	srv.Event.Send("runtime", srv.name, msg)
-	for {
-		conn, err := srv.listener.Accept()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		go srv.connHandler(conn)
-	}
-}
-
-func (srv *ServerTLS) connHandler(conn net.Conn) {
-	defer conn.Close()
-	r := bufio.NewReader(conn)
-	for {
-		msg, err := r.ReadString('\n')
-		if err != nil {
-			log.Println(err)
-			return
+		srv.config.event.Send("request", srv.config.name, msg)
+		if srv.config.hcServer {
+			srv.config.metric.Inc("requests_hc")
+		} else {
+			srv.config.metric.Inc("requests_service")
 		}
 
-		srv.Event.Send("request", srv.name, msg)
-
-		healthy := fmt.Sprintf("%s\n", srv.hcControl.GetHealthyStr())
+		healthy := fmt.Sprintf("%s\n", srv.config.hc.GetHealthyStr())
 		n, err := conn.Write([]byte(healthy))
 		if err != nil {
 			log.Println(n, err)

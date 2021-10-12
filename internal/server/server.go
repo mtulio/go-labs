@@ -17,6 +17,18 @@ type Server interface {
 	//SetState(value bool) error
 }
 
+type ServerConfig struct {
+	proto    Protocol
+	name     string
+	port     uint64
+	event    *EventHandler
+	metric   *MetricsHandler
+	hc       *HealthCheckController
+	hcServer bool
+	certPem  string
+	certKey  string
+}
+
 func GetProtocolByString(proto string) Protocol {
 	switch proto {
 	case "tcp":

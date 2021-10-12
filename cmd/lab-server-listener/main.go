@@ -34,19 +34,23 @@ func init() {
 func main() {
 	readyToShutdown := make(chan struct{})
 
+	metric := server.NewMetricHandler()
 	ev := server.NewEventHandler(*appName, *logPath)
 
 	lnc := server.ListenerOptions{
-		ServiceProto: server.GetProtocolByString(*svcProto),
-		ServicePort:  *svcPort,
-		HCProto:      server.GetProtocolByString(*hcProto),
-		HCPort:       *hcPort,
-		HCPath:       *hcPath,
-		CertPem:      *certPem,
-		CertKey:      *certKey,
+		ServiceProto:   server.GetProtocolByString(*svcProto),
+		ServicePort:    *svcPort,
+		HCProto:        server.GetProtocolByString(*hcProto),
+		HCPort:         *hcPort,
+		HCPath:         *hcPath,
+		CertPem:        *certPem,
+		CertKey:        *certKey,
+		Event:          ev,
+		Metric:         metric,
+		TargetGroupARN: *watchTg,
 	}
 
-	ln, err := server.NewListener(&lnc, ev)
+	ln, err := server.NewListener(&lnc)
 	if err != nil {
 		log.Fatal("ERROR Creating the listener")
 	}
