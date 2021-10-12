@@ -34,8 +34,9 @@ func init() {
 func main() {
 	readyToShutdown := make(chan struct{})
 
-	metric := server.NewMetricHandler()
 	ev := server.NewEventHandler(*appName, *logPath)
+	metric := server.NewMetricHandler(ev)
+	go metric.StartPusher()
 
 	lnc := server.ListenerOptions{
 		ServiceProto:   server.GetProtocolByString(*svcProto),

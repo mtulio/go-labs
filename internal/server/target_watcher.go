@@ -65,7 +65,7 @@ func (tg *TargetGroupWatcher) Start() {
 		healthCount := 0
 		unhealthyCount := 0
 		for _, d := range result.TargetHealthDescriptions {
-			fmt.Println(d.TargetHealth)
+			//fmt.Println(*d.TargetHealth.State, *d.TargetHealth.Reason)
 			if *d.TargetHealth.State == "healthy" {
 				healthCount += 1
 				continue
@@ -73,9 +73,9 @@ func (tg *TargetGroupWatcher) Start() {
 			unhealthyCount += 1
 		}
 
-		tg.options.Metric.TargetHealthy = (healthCount > 0)
+		tg.options.Metric.TargetHealthy = (unhealthyCount == 0)
 		tg.options.Metric.TargetHealthCount = uint8(healthCount)
 		tg.options.Metric.TargetUnhealthCount = uint8(unhealthyCount)
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }

@@ -193,7 +193,6 @@ func (l *Listener) Start() error {
 	l.Event.Send("runtime", "listener", "Starting services...")
 
 	// Start LoadBalancer/TargetGroup watcher
-	//ToDo
 	go l.watcherTG.Start()
 
 	// Start HC Controller

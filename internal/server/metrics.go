@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"log"
 	"sync"
 	"time"
 )
@@ -15,10 +17,13 @@ type MetricsHandler struct {
 	ReqCountHC          uint8     `json:"reqc_hc"`
 	mxReqService        sync.Mutex
 	mxReqHC             sync.Mutex
+	event               *EventHandler
 }
 
-func NewMetricHandler() *MetricsHandler {
-	return &MetricsHandler{}
+func NewMetricHandler(e *EventHandler) *MetricsHandler {
+	return &MetricsHandler{
+		event: e,
+	}
 }
 
 func (m *MetricsHandler) Set(metric string, value uint8) {
@@ -37,4 +42,20 @@ func (m *MetricsHandler) Inc(metric string) {
 		m.mxReqService.Unlock()
 	}
 	return
+}
+
+// StartPush is a routing to dump/push metrics to
+// anywhere (ToDo). Only stdout is supported atm.
+func (m *MetricsHandler) StartPusher() {
+	for {
+		m.Time = time.Now()
+		data, err := json.Marshal(m)
+		if err != nil {
+			log.Println("Error building metrics...")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		m.event.Send("metrics", "metrics-push", string(data))
+		time.Sleep(1 * time.Second)
+	}
 }

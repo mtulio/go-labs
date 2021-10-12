@@ -53,7 +53,7 @@ func NewHealthCheckController(op *HCControllerOpts) *HealthCheckController {
 		Event:                 op.Event,
 		Metric:                op.Metric,
 	}
-	//signal.Notify(hc.termChan, syscall.SIGTERM)
+	hc.Metric.AppHealthy = hc.Healthy
 	return &hc
 }
 
@@ -151,7 +151,7 @@ func (hc *HealthCheckController) runTicker() {
 		}
 
 		// Timeout 300s
-		if time.Since(hc.terminationStartTime).Seconds() >= 30 {
+		if time.Since(hc.terminationStartTime).Seconds() >= 120 {
 			//log.Println("Restoring to Healthy state...")
 			hc.Event.Send("runtime", "hc-controller", "Restoring to Health State")
 			hc.StartHealth()
