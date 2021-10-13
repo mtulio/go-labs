@@ -9,12 +9,13 @@ import (
 
 type MetricsHandler struct {
 	Time                time.Time `json:"time"`
+	AppTermination      bool      `json:"app_termination"`
 	AppHealthy          bool      `json:"app_healthy"`
 	TargetHealthy       bool      `json:"tg_healthy"`
 	TargetHealthCount   uint8     `json:"tg_health_count"`
 	TargetUnhealthCount uint8     `json:"tg_unhealth_count"`
-	ReqCountService     uint8     `json:"reqc_service"`
-	ReqCountHC          uint8     `json:"reqc_hc"`
+	ReqCountService     uint64    `json:"reqc_service"`
+	ReqCountHC          uint64    `json:"reqc_hc"`
 	mxReqService        sync.Mutex
 	mxReqHC             sync.Mutex
 	event               *EventHandler

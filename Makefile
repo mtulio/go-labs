@@ -9,8 +9,15 @@ generate-certs: deps
 		-out ./.local/server.crt -days 3650
 
 build: deps
-	go build -o ./bin/lab-server ./cmd/lab-server
+	go build -o ./bin/lab-app-server ./cmd/lab-app-server/
 
 # build single service
 build-single:
-	go build -o ./bin/lab-server-listener ./cmd/lab-server-listener/
+	go build -o ./bin/lab-bind-all ./cmd/lab-bind-all/
+
+build-k8sapi:
+	go build -o ./bin/lab-k8sapi-watcher ./cmd/lab-k8sapi-watcher/
+
+build-all:
+	$(MAKE) build
+	$(MAKE) build-k8sapi

@@ -54,6 +54,7 @@ func NewHealthCheckController(op *HCControllerOpts) *HealthCheckController {
 		Metric:                op.Metric,
 	}
 	hc.Metric.AppHealthy = hc.Healthy
+	hc.Metric.AppTermination = hc.terminationInProgress
 	return &hc
 }
 
@@ -131,12 +132,14 @@ func (hc *HealthCheckController) StartTermination() {
 	hc.locker.Lock()
 	hc.terminationInProgress = true
 	hc.terminationStartTime = time.Now()
+	hc.Metric.AppTermination = hc.terminationInProgress
 	hc.locker.Unlock()
 }
 
 func (hc *HealthCheckController) StopTermination() {
 	hc.locker.Lock()
 	hc.terminationInProgress = false
+	hc.Metric.AppTermination = hc.terminationInProgress
 	hc.locker.Unlock()
 }
 
@@ -150,8 +153,8 @@ func (hc *HealthCheckController) runTicker() {
 			continue
 		}
 
-		// Timeout 300s
-		if time.Since(hc.terminationStartTime).Seconds() >= 120 {
+		// Timeout 180s
+		if time.Since(hc.terminationStartTime).Seconds() >= 180 {
 			//log.Println("Restoring to Healthy state...")
 			hc.Event.Send("runtime", "hc-controller", "Restoring to Health State")
 			hc.StartHealth()
