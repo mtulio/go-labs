@@ -29,6 +29,8 @@ func init() {
 	}
 }
 
+// Start register when termination start. Should be called when
+// the signal is sent to k8s-apiserver.
 func signalHandler(m *server.MetricsHandler, e *server.EventHandler) {
 	for {
 		msg := ("Running Signal handler")
@@ -80,7 +82,6 @@ func main() {
 	}
 
 	// start apiserver client requests
-
 	//> slow start
 	e.Send("request-client", appName, "Starting client in 10s")
 	time.Sleep(10 * time.Second)

@@ -17,21 +17,13 @@ var (
 	certKey     *string = flag.String("cert-key", "", "help message for flagname")
 	hcProto     *string = flag.String("health-check-proto", "http", "help message for flagname")
 	hcPort      *uint64 = flag.Uint64("health-check-port", 30301, "help message for flagname")
-	hcPath      *string = flag.String("health-check-path", "/healthy", "help message for flagname")
+	hcPath      *string = flag.String("health-check-path", "/readyz", "help message for flagname")
 	watchTg     *string = flag.String("watch-target-group-arn", "", "help message for flagname")
 	termTimeout *int    = flag.Int("termination-timeout", 300, "help message for flagname")
 )
 
-func init() {
-	// input
-	// --service-proto --service-port
-	// --health-check-proto --health-check-port --health-check-path
-	// --watch-aws-tg-arn
-	// --termination-timeout
-	flag.Parse()
-}
-
 func main() {
+	flag.Parse()
 	readyToShutdown := make(chan struct{})
 
 	ev := server.NewEventHandler(*appName, *logPath)
@@ -58,6 +50,5 @@ func main() {
 
 	ln.Start()
 
-	// read and print channel of requests
 	<-readyToShutdown
 }
