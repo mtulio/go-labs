@@ -1,5 +1,10 @@
 package server
 
+import (
+	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/mtulio/go-lab-api/internal/metric"
+)
+
 type Protocol uint8
 
 const (
@@ -21,15 +26,15 @@ type ServerConfig struct {
 	proto    Protocol
 	name     string
 	port     uint64
-	event    *EventHandler
-	metric   *MetricsHandler
+	event    *event.EventHandler
+	metric   *metric.MetricsHandler
 	hc       *HealthCheckController
 	hcServer bool
 	certPem  string
 	certKey  string
 }
 
-func GetProtocolByString(proto string) Protocol {
+func GetProtocolFromStr(proto string) Protocol {
 	switch proto {
 	case "tcp":
 		return ProtoTCP

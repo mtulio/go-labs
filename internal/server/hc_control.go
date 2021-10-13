@@ -6,8 +6,10 @@ import (
 	"syscall"
 	"time"
 
-	//"log"
 	"sync"
+
+	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/mtulio/go-lab-api/internal/metric"
 )
 
 type HealthCheckController struct {
@@ -35,14 +37,14 @@ type HealthCheckController struct {
 	// mutex
 	locker sync.Mutex
 
-	Event *EventHandler
+	Event *event.EventHandler
 
-	Metric *MetricsHandler
+	Metric *metric.MetricsHandler
 }
 
 type HCControllerOpts struct {
-	Event  *EventHandler
-	Metric *MetricsHandler
+	Event  *event.EventHandler
+	Metric *metric.MetricsHandler
 }
 
 func NewHealthCheckController(op *HCControllerOpts) *HealthCheckController {

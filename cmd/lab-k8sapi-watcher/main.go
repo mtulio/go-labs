@@ -12,6 +12,8 @@ import (
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/mtulio/go-lab-api/internal/metric"
 	"github.com/mtulio/go-lab-api/internal/server"
 )
 
@@ -31,7 +33,7 @@ func init() {
 
 // Start register when termination start. Should be called when
 // the signal is sent to k8s-apiserver.
-func signalHandler(m *server.MetricsHandler, e *server.EventHandler) {
+func signalHandler(m *metric.MetricsHandler, e *event.EventHandler) {
 	for {
 		msg := ("Running Signal handler")
 		e.Send("runtime", "hc-controller", msg)
@@ -53,8 +55,8 @@ func signalHandler(m *server.MetricsHandler, e *server.EventHandler) {
 
 func main() {
 	appName := "k8sapi-watcher"
-	e := server.NewEventHandler(appName, *logPath)
-	m := server.NewMetricHandler(e)
+	e := event.NewEventHandler(appName, *logPath)
+	m := metric.NewMetricHandler(e)
 
 	// set defaults
 	m.AppHealthy = false

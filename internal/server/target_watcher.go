@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
+	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/mtulio/go-lab-api/internal/metric"
 )
 
 type TargetGroupWatcher struct {
@@ -20,8 +22,8 @@ type TargetGroupWatcher struct {
 type TGWatcherOptions struct {
 	ARN      string
 	Interval time.Duration
-	Metric   *MetricsHandler
-	Event    *EventHandler
+	Metric   *metric.MetricsHandler
+	Event    *event.EventHandler
 }
 
 func NewWatcherTargetGroup(op *TGWatcherOptions) (*TargetGroupWatcher, error) {

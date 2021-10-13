@@ -1,10 +1,12 @@
-package server
+package metric
 
 import (
 	"encoding/json"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/mtulio/go-lab-api/internal/event"
 )
 
 type MetricsHandler struct {
@@ -18,10 +20,10 @@ type MetricsHandler struct {
 	ReqCountHC          uint64    `json:"reqc_hc"`
 	mxReqService        sync.Mutex
 	mxReqHC             sync.Mutex
-	event               *EventHandler
+	event               *event.EventHandler
 }
 
-func NewMetricHandler(e *EventHandler) *MetricsHandler {
+func NewMetricHandler(e *event.EventHandler) *MetricsHandler {
 	return &MetricsHandler{
 		event: e,
 	}

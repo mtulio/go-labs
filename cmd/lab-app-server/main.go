@@ -5,6 +5,8 @@ import (
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/mtulio/go-lab-api/internal/metric"
 	"github.com/mtulio/go-lab-api/internal/server"
 )
 
@@ -26,14 +28,14 @@ func main() {
 	flag.Parse()
 	readyToShutdown := make(chan struct{})
 
-	ev := server.NewEventHandler(*appName, *logPath)
-	metric := server.NewMetricHandler(ev)
+	ev := event.NewEventHandler(*appName, *logPath)
+	metric := metric.NewMetricHandler(ev)
 	go metric.StartPusher()
 
 	lnc := server.ListenerOptions{
-		ServiceProto:   server.GetProtocolByString(*svcProto),
+		ServiceProto:   server.GetProtocolFromStr(*svcProto),
 		ServicePort:    *svcPort,
-		HCProto:        server.GetProtocolByString(*hcProto),
+		HCProto:        server.GetProtocolFromStr(*hcProto),
 		HCPort:         *hcPort,
 		HCPath:         *hcPath,
 		CertPem:        *certPem,

@@ -2,6 +2,9 @@ package server
 
 import (
 	"log"
+
+	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/mtulio/go-lab-api/internal/metric"
 )
 
 type ListenerOptions struct {
@@ -14,18 +17,17 @@ type ListenerOptions struct {
 	CertPem            string
 	CertKey            string
 	TerminationTimeout float64
-	Event              *EventHandler
-	Metric             *MetricsHandler
+	Event              *event.EventHandler
+	Metric             *metric.MetricsHandler
 }
 
 type Listener struct {
 	options       *ListenerOptions
 	serverService Server
 	serverHC      Server
-	//watcher       *TargetGroupWatcher
-	controllerHC *HealthCheckController
-	Event        *EventHandler
-	watcherTG    *TargetGroupWatcher
+	controllerHC  *HealthCheckController
+	Event         *event.EventHandler
+	watcherTG     *TargetGroupWatcher
 }
 
 func NewListener(op *ListenerOptions) (*Listener, error) {
