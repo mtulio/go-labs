@@ -76,8 +76,8 @@ func (tg *TargetGroupWatcher) Start() {
 		}
 
 		tg.options.Metric.TargetHealthy = (unhealthyCount == 0)
-		tg.options.Metric.TargetHealthCount = uint8(healthCount)
-		tg.options.Metric.TargetUnhealthCount = uint8(unhealthyCount)
+		tg.options.Metric.TargetHealthCount = uint64(healthCount)
+		tg.options.Metric.TargetUnhealthCount = uint64(unhealthyCount)
 		time.Sleep(1 * time.Second)
 	}
 }

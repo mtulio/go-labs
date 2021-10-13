@@ -58,6 +58,28 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 		w.Write([]byte(respBody))
 	})
 
+	srv.listener.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		respBody := fmt.Sprintf("pong")
+		w.Header().Set("Content-Type", "text/plain")
+
+		go func() {
+			type EventRequest struct {
+				Body string `json:"body"`
+				Code int    `json:"code"`
+			}
+			req := &EventRequest{
+				Body: respBody,
+				Code: 200,
+			}
+			data, _ := json.Marshal(req)
+			srv.config.event.Send("request", srv.config.name, string(data))
+
+			srv.config.metric.Inc("requests_service")
+		}()
+
+		w.Write([]byte(respBody))
+	})
+
 	srv.config.event.Send("runtime", srv.config.name, "Server HTTP Created")
 	return &srv, nil
 }

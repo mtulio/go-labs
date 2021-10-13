@@ -10,27 +10,43 @@ import (
 )
 
 type MetricsHandler struct {
-	Time                time.Time `json:"time"`
-	AppTermination      bool      `json:"app_termination"`
-	AppHealthy          bool      `json:"app_healthy"`
-	TargetHealthy       bool      `json:"tg_healthy"`
-	TargetHealthCount   uint8     `json:"tg_health_count"`
-	TargetUnhealthCount uint8     `json:"tg_unhealth_count"`
-	ReqCountService     uint64    `json:"reqc_service"`
-	ReqCountHC          uint64    `json:"reqc_hc"`
-	mxReqService        sync.Mutex
-	mxReqHC             sync.Mutex
-	event               *event.EventHandler
+	Time time.Time `json:"time"`
+
+	// Global metrics
+	mxGlobal            sync.Mutex
+	AppTermination      bool   `json:"app_termination"`
+	AppHealthy          bool   `json:"app_healthy"`
+	TargetHealthy       bool   `json:"tg_healthy"`
+	TargetHealthCount   uint64 `json:"tg_health_count"`
+	TargetUnhealthCount uint64 `json:"tg_unhealth_count"`
+
+	// Request counters
+	mxReqService    sync.Mutex
+	ReqCountService uint64 `json:"reqc_service"`
+	mxReqHC         sync.Mutex
+	ReqCountHC      uint64 `json:"reqc_hc"`
+	mxReqCli        sync.Mutex
+	ReqCountClient  uint64 `json:"reqc_client"`
+
+	event *event.EventHandler
 }
 
 func NewMetricHandler(e *event.EventHandler) *MetricsHandler {
 	return &MetricsHandler{
-		event: e,
+		event:               e,
+		AppTermination:      false,
+		AppHealthy:          false,
+		TargetHealthy:       false,
+		TargetHealthCount:   0,
+		TargetUnhealthCount: 0,
+		ReqCountService:     0,
+		ReqCountHC:          0,
+		ReqCountClient:      0,
 	}
 }
 
-func (m *MetricsHandler) Set(metric string, value uint8) {
-	return
+func (m *MetricsHandler) SetCounter(metric string, value uint8) error {
+	return nil
 }
 
 func (m *MetricsHandler) Inc(metric string) {
@@ -43,6 +59,10 @@ func (m *MetricsHandler) Inc(metric string) {
 		m.mxReqService.Lock()
 		m.ReqCountHC += 1
 		m.mxReqService.Unlock()
+	case "requests_client":
+		m.mxReqCli.Lock()
+		m.ReqCountClient += 1
+		m.mxReqCli.Unlock()
 	}
 	return
 }
