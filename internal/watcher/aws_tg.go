@@ -1,4 +1,4 @@
-package server
+package watcher
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type TGWatcherOptions struct {
 	Event    *event.EventHandler
 }
 
-func NewWatcherTargetGroup(op *TGWatcherOptions) (*TargetGroupWatcher, error) {
+func NewTargetGroupWatcher(op *TGWatcherOptions) (*TargetGroupWatcher, error) {
 
 	tgw := TargetGroupWatcher{
 		options: op,

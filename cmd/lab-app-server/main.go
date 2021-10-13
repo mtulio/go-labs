@@ -8,6 +8,7 @@ import (
 	"github.com/mtulio/go-lab-api/internal/event"
 	"github.com/mtulio/go-lab-api/internal/metric"
 	"github.com/mtulio/go-lab-api/internal/server"
+	"github.com/mtulio/go-lab-api/internal/watcher"
 )
 
 var (
@@ -32,17 +33,27 @@ func main() {
 	metric := metric.NewMetricHandler(ev)
 	go metric.StartPusher()
 
+	// Watch Target Group and extract/update metrics
+	tgw, err := watcher.NewTargetGroupWatcher(&watcher.TGWatcherOptions{
+		ARN:    *watchTg,
+		Metric: metric,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	go tgw.Start()
+
+	// the listener will handle the servers (service and health-check)
 	lnc := server.ListenerOptions{
-		ServiceProto:   server.GetProtocolFromStr(*svcProto),
-		ServicePort:    *svcPort,
-		HCProto:        server.GetProtocolFromStr(*hcProto),
-		HCPort:         *hcPort,
-		HCPath:         *hcPath,
-		CertPem:        *certPem,
-		CertKey:        *certKey,
-		Event:          ev,
-		Metric:         metric,
-		TargetGroupARN: *watchTg,
+		ServiceProto: server.GetProtocolFromStr(*svcProto),
+		ServicePort:  *svcPort,
+		HCProto:      server.GetProtocolFromStr(*hcProto),
+		HCPort:       *hcPort,
+		HCPath:       *hcPath,
+		CertPem:      *certPem,
+		CertKey:      *certKey,
+		Event:        ev,
+		Metric:       metric,
 	}
 
 	ln, err := server.NewListener(&lnc)

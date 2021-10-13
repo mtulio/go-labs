@@ -27,7 +27,6 @@ type Listener struct {
 	serverHC      Server
 	controllerHC  *HealthCheckController
 	Event         *event.EventHandler
-	watcherTG     *TargetGroupWatcher
 }
 
 func NewListener(op *ListenerOptions) (*Listener, error) {
@@ -37,20 +36,11 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 		Event:  op.Event,
 		Metric: op.Metric,
 	})
-	watcher, err := NewWatcherTargetGroup(&TGWatcherOptions{
-		ARN:    op.TargetGroupARN,
-		Metric: op.Metric,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	//watcher.Start()
 
 	ln := Listener{
 		options:      op,
 		controllerHC: ctrl,
 		Event:        op.Event,
-		watcherTG:    watcher,
 	}
 
 	switch op.ServiceProto {
@@ -193,9 +183,6 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 
 func (l *Listener) Start() error {
 	l.Event.Send("runtime", "listener", "Starting services...")
-
-	// Start LoadBalancer/TargetGroup watcher
-	go l.watcherTG.Start()
 
 	// Start HC Controller
 	go l.controllerHC.Start()

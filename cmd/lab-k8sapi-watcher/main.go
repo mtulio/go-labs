@@ -14,7 +14,7 @@ import (
 
 	"github.com/mtulio/go-lab-api/internal/event"
 	"github.com/mtulio/go-lab-api/internal/metric"
-	"github.com/mtulio/go-lab-api/internal/server"
+	"github.com/mtulio/go-lab-api/internal/watcher"
 )
 
 var (
@@ -69,16 +69,15 @@ func main() {
 	// Start metrics dumper/pusher
 	go m.StartPusher()
 
-	// start watching listener
+	// start watching target group to extract metrics
 	// dry-run / run locally
 	if *watchTg != "" {
-		tgw, err := server.NewWatcherTargetGroup(&server.TGWatcherOptions{
+		tgw, err := watcher.NewTargetGroupWatcher(&watcher.TGWatcherOptions{
 			ARN:    *watchTg,
 			Metric: m,
-			Event:  e,
 		})
 		if err != nil {
-			log.Fatal(e)
+			log.Fatal(err)
 		}
 		go tgw.Start()
 	}
