@@ -21,12 +21,15 @@ type MetricsHandler struct {
 	TargetUnhealthCount uint64 `json:"tg_unhealth_count"`
 
 	// Request counters
-	mxReqService    sync.Mutex
-	ReqCountService uint64 `json:"reqc_service"`
-	mxReqHC         sync.Mutex
-	ReqCountHC      uint64 `json:"reqc_hc"`
-	mxReqCli        sync.Mutex
-	ReqCountClient  uint64 `json:"reqc_client"`
+	mxReqService      sync.Mutex
+	ReqCountService   uint64 `json:"reqc_service"`
+	mxReqHC           sync.Mutex
+	ReqCountHC        uint64 `json:"reqc_hc"`
+	mxReqCli          sync.Mutex
+	ReqCountClient    uint64 `json:"reqc_client"`
+	ReqCountClient2xx uint64 `json:"reqc_client_2xx"`
+	ReqCountClient4xx uint64 `json:"reqc_client_4xx"`
+	ReqCountClient5xx uint64 `json:"reqc_client_5xx"`
 
 	event *event.EventHandler
 }
@@ -63,7 +66,20 @@ func (m *MetricsHandler) Inc(metric string) {
 		m.mxReqCli.Lock()
 		m.ReqCountClient += 1
 		m.mxReqCli.Unlock()
+	case "requests_cli_2xx":
+		m.mxReqCli.Lock()
+		m.ReqCountClient2xx += 1
+		m.mxReqCli.Unlock()
+	case "requests_cli_4xx":
+		m.mxReqCli.Lock()
+		m.ReqCountClient4xx += 1
+		m.mxReqCli.Unlock()
+	case "requests_cli_5xx":
+		m.mxReqCli.Lock()
+		m.ReqCountClient5xx += 1
+		m.mxReqCli.Unlock()
 	}
+
 	return
 }
 

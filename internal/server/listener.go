@@ -19,6 +19,7 @@ type ListenerOptions struct {
 	TerminationTimeout float64
 	Event              *event.EventHandler
 	Metric             *metric.MetricsHandler
+	Debug              bool
 }
 
 type Listener struct {
@@ -53,6 +54,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			hc:       ctrl,
 			event:    op.Event,
 			metric:   op.Metric,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -70,6 +72,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			metric:   op.Metric,
 			certPem:  op.CertPem,
 			certKey:  op.CertKey,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -87,6 +90,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			metric:   op.Metric,
 			certPem:  op.CertPem,
 			certKey:  op.CertKey,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -104,6 +108,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			metric:   op.Metric,
 			certPem:  op.CertPem,
 			certKey:  op.CertKey,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server Service", err)
@@ -122,6 +127,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			hc:       ctrl,
 			event:    op.Event,
 			metric:   op.Metric,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -139,6 +145,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			metric:   op.Metric,
 			certPem:  op.CertPem,
 			certKey:  op.CertKey,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -154,6 +161,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			hc:       ctrl,
 			event:    op.Event,
 			metric:   op.Metric,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)
@@ -171,6 +179,7 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 			metric:   op.Metric,
 			certPem:  op.CertPem,
 			certKey:  op.CertKey,
+			debug:    op.Debug,
 		})
 		if err != nil {
 			log.Fatal("ERROR creating Server HC", err)

@@ -5,6 +5,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/mtulio/go-lab-api/internal/client"
 	"github.com/mtulio/go-lab-api/internal/event"
 	"github.com/mtulio/go-lab-api/internal/metric"
 	"github.com/mtulio/go-lab-api/internal/server"
@@ -12,17 +13,23 @@ import (
 )
 
 var (
-	appName     *string = flag.String("app-name", "myApp", "help message for flagname")
-	logPath     *string = flag.String("log-path", "", "help message for flagname")
-	svcProto    *string = flag.String("service-proto", "http", "help message for flagname")
-	svcPort     *uint64 = flag.Uint64("service-port", 30300, "help message for flagname")
-	certPem     *string = flag.String("cert-pem", "", "help message for flagname")
-	certKey     *string = flag.String("cert-key", "", "help message for flagname")
-	hcProto     *string = flag.String("health-check-proto", "http", "help message for flagname")
-	hcPort      *uint64 = flag.Uint64("health-check-port", 30301, "help message for flagname")
-	hcPath      *string = flag.String("health-check-path", "/readyz", "help message for flagname")
-	watchTg     *string = flag.String("watch-target-group-arn", "", "help message for flagname")
-	termTimeout *int    = flag.Int("termination-timeout", 300, "help message for flagname")
+	appName      *string = flag.String("app-name", "myApp", "help message for flagname")
+	logPath      *string = flag.String("log-path", "", "help message for flagname")
+	svcProto     *string = flag.String("service-proto", "http", "help message for flagname")
+	svcPort      *uint64 = flag.Uint64("service-port", 30300, "help message for flagname")
+	certPem      *string = flag.String("cert-pem", "", "help message for flagname")
+	certKey      *string = flag.String("cert-key", "", "help message for flagname")
+	hcProto      *string = flag.String("health-check-proto", "http", "help message for flagname")
+	hcPort       *uint64 = flag.Uint64("health-check-port", 30301, "help message for flagname")
+	hcPath       *string = flag.String("health-check-path", "/readyz", "help message for flagname")
+	watchTg      *string = flag.String("watch-target-group-arn", "", "help message for flagname")
+	termTimeout  *int    = flag.Int("termination-timeout", 300, "help message for flagname")
+	debug        *bool   = flag.Bool("debug", false, "Enable debug mode")
+	cliGenReqURL *string = flag.String("gen-requests-to-url", "", "Make background requests to URL and measure it.")
+	cliGenReqInt *uint64 = flag.Uint64("gen-requests-interval", 250, "Interval between each requests (milisseconds")
+	cliGenReqTmo *uint8  = flag.Uint8("gen-requests-timeout", 5, "Context timeout for each requests (seconds)")
+	cliGenReqCnt *uint64 = flag.Uint64("gen-requests-count", 0, "Amount of requests to generate to the target. 0 is to infinite.")
+	cliGenReqSS  *uint8  = flag.Uint8("gen-requests-slow-start", 10, "Amount of time in seconds to wait to send the first request.")
 )
 
 func main() {
@@ -54,6 +61,7 @@ func main() {
 		CertKey:      *certKey,
 		Event:        ev,
 		Metric:       metric,
+		Debug:        *debug,
 	}
 
 	ln, err := server.NewListener(&lnc)
@@ -62,6 +70,23 @@ func main() {
 	}
 
 	ln.Start()
+
+	// Start the client request generator, and measure it with server
+	// metrics.
+	if *cliGenReqURL != "" {
+		curlCfg := client.CurlOptions{
+			Endpoint:     *cliGenReqURL,
+			IntervalMs:   *cliGenReqInt,
+			TimeoutSec:   *cliGenReqTmo,
+			SlowStartSec: *cliGenReqSS,
+			Count:        *cliGenReqCnt,
+		}
+		curl, err := client.NewCurlWithConfig(&curlCfg, metric, ev)
+		if err != nil {
+			log.Printf("ERROR unable to create the client: %v\n", err)
+		}
+		go curl.Loop(false, nil)
+	}
 
 	<-readyToShutdown
 }

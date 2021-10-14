@@ -32,6 +32,7 @@ type ServerConfig struct {
 	hcServer bool
 	certPem  string
 	certKey  string
+	debug    bool
 }
 
 func GetProtocolFromStr(proto string) Protocol {

@@ -46,7 +46,9 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 			// 	},
 			// 	"request": r
 			// }`
-			srv.config.event.Send("request", srv.config.name, string(data))
+			if srv.config.debug {
+				srv.config.event.Send("request", srv.config.name, string(data))
+			}
 
 			if srv.config.hcServer {
 				srv.config.metric.Inc("requests_hc")
@@ -72,8 +74,21 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 				Code: 200,
 			}
 			data, _ := json.Marshal(req)
-			srv.config.event.Send("request", srv.config.name, string(data))
+			if srv.config.debug {
+				srv.config.event.Send("request", srv.config.name, string(data))
+			}
 
+			srv.config.metric.Inc("requests_service")
+		}()
+
+		w.Write([]byte(respBody))
+	})
+
+	srv.listener.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		respBody := fmt.Sprintf("Available routes: \n/healthy\n/ping")
+		w.Header().Set("Content-Type", "text/plain")
+
+		go func() {
 			srv.config.metric.Inc("requests_service")
 		}()
 
