@@ -16,7 +16,7 @@ type ListenerOptions struct {
 	TargetGroupARN     string
 	CertPem            string
 	CertKey            string
-	TerminationTimeout float64
+	TerminationTimeout uint64
 	Event              *event.EventHandler
 	Metric             *metric.MetricsHandler
 	Debug              bool
@@ -34,8 +34,9 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 
 	// Create HC Controller
 	ctrl := NewHealthCheckController(&HCControllerOpts{
-		Event:  op.Event,
-		Metric: op.Metric,
+		Event:       op.Event,
+		Metric:      op.Metric,
+		TermTimeout: op.TerminationTimeout,
 	})
 
 	ln := Listener{

@@ -43,17 +43,20 @@ type HealthCheckController struct {
 }
 
 type HCControllerOpts struct {
-	Event  *event.EventHandler
-	Metric *metric.MetricsHandler
+	Event       *event.EventHandler
+	Metric      *metric.MetricsHandler
+	TermTimeout uint64
 }
 
 func NewHealthCheckController(op *HCControllerOpts) *HealthCheckController {
+
 	hc := HealthCheckController{
 		Healthy:               true,
 		terminationInProgress: false,
-		terminationTimeout:    30.0,
-		Event:                 op.Event,
-		Metric:                op.Metric,
+		//terminationTimeout:    (time.Duration(float64(op.TermTimeout)) * time.Second),
+		terminationTimeout: float64(op.TermTimeout),
+		Event:              op.Event,
+		Metric:             op.Metric,
 	}
 	hc.Metric.AppHealthy = hc.Healthy
 	hc.Metric.AppTermination = hc.terminationInProgress
@@ -63,37 +66,6 @@ func NewHealthCheckController(op *HCControllerOpts) *HealthCheckController {
 func (hc *HealthCheckController) Start() {
 	go hc.runSignalHandler()
 	go hc.runTicker()
-}
-
-// Handle SiGTERM signal, if it was sent twice the termination
-// will be forced. Otherwise the timeout ticket will clear the
-// process for a while.
-func (hc *HealthCheckController) runSignalHandler() {
-
-	for {
-		msg := ("Running Signal handler")
-		hc.Event.Send("runtime", "hc-controller", msg)
-
-		termChan := make(chan os.Signal)
-		signal.Notify(termChan, syscall.SIGTERM)
-
-		<-termChan
-
-		msg = ("Termination Signal receievd")
-		hc.Event.Send("runtime", "hc-controller", msg)
-
-		if hc.terminationInProgress {
-			msg = ("Termination already in progress, forcing termination.")
-			hc.Event.Send("runtime", "hc-controller", msg)
-			os.Exit(0)
-		}
-
-		hc.StartTermination()
-		hc.StartUnhealth()
-
-		termChan = make(chan os.Signal)
-		signal.Notify(termChan, syscall.SIGTERM)
-	}
 }
 
 func (hc *HealthCheckController) GetHealthy() bool {
@@ -145,6 +117,37 @@ func (hc *HealthCheckController) StopTermination() {
 	hc.locker.Unlock()
 }
 
+// Handle SiGTERM signal, if it was sent twice the termination
+// will be forced. Otherwise the timeout ticket will clear the
+// process for a while.
+func (hc *HealthCheckController) runSignalHandler() {
+
+	for {
+		msg := ("Running Signal handler")
+		hc.Event.Send("runtime", "hc-controller", msg)
+
+		termChan := make(chan os.Signal)
+		signal.Notify(termChan, syscall.SIGTERM)
+
+		<-termChan
+
+		msg = ("Termination Signal receievd")
+		hc.Event.Send("runtime", "hc-controller", msg)
+
+		if hc.terminationInProgress {
+			msg = ("Termination already in progress, forcing termination.")
+			hc.Event.Send("runtime", "hc-controller", msg)
+			os.Exit(0)
+		}
+
+		hc.StartTermination()
+		hc.StartUnhealth()
+
+		termChan = make(chan os.Signal)
+		signal.Notify(termChan, syscall.SIGTERM)
+	}
+}
+
 // Run Termination checker until timeout, then reset to
 // Healthy state
 func (hc *HealthCheckController) runTicker() {
@@ -155,8 +158,8 @@ func (hc *HealthCheckController) runTicker() {
 			continue
 		}
 
-		// Timeout 180s
-		if time.Since(hc.terminationStartTime).Seconds() >= 180 {
+		// Timeout (arg --termination-timeout)
+		if time.Since(hc.terminationStartTime).Seconds() >= hc.terminationTimeout {
 			//log.Println("Restoring to Healthy state...")
 			hc.Event.Send("runtime", "hc-controller", "Restoring to Health State")
 			hc.StartHealth()

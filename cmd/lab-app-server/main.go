@@ -23,7 +23,7 @@ var (
 	hcPort       *uint64 = flag.Uint64("health-check-port", 30301, "help message for flagname")
 	hcPath       *string = flag.String("health-check-path", "/readyz", "help message for flagname")
 	watchTg      *string = flag.String("watch-target-group-arn", "", "help message for flagname")
-	termTimeout  *int    = flag.Int("termination-timeout", 300, "help message for flagname")
+	termTimeout  *uint64 = flag.Uint64("termination-timeout", 300, "help message for flagname")
 	debug        *bool   = flag.Bool("debug", false, "Enable debug mode")
 	cliGenReqURL *string = flag.String("gen-requests-to-url", "", "Make background requests to URL and measure it.")
 	cliGenReqInt *uint64 = flag.Uint64("gen-requests-interval", 250, "Interval between each requests (milisseconds")
@@ -52,16 +52,17 @@ func main() {
 
 	// the listener will handle the servers (service and health-check)
 	lnc := server.ListenerOptions{
-		ServiceProto: server.GetProtocolFromStr(*svcProto),
-		ServicePort:  *svcPort,
-		HCProto:      server.GetProtocolFromStr(*hcProto),
-		HCPort:       *hcPort,
-		HCPath:       *hcPath,
-		CertPem:      *certPem,
-		CertKey:      *certKey,
-		Event:        ev,
-		Metric:       metric,
-		Debug:        *debug,
+		ServiceProto:       server.GetProtocolFromStr(*svcProto),
+		ServicePort:        *svcPort,
+		HCProto:            server.GetProtocolFromStr(*hcProto),
+		HCPort:             *hcPort,
+		HCPath:             *hcPath,
+		CertPem:            *certPem,
+		CertKey:            *certKey,
+		Event:              ev,
+		Metric:             metric,
+		Debug:              *debug,
+		TerminationTimeout: *termTimeout,
 	}
 
 	ln, err := server.NewListener(&lnc)
