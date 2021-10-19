@@ -30,6 +30,7 @@ type ServerConfig struct {
 	metric   *metric.MetricsHandler
 	hc       *HealthCheckController
 	hcServer bool
+	hcPath   string
 	certPem  string
 	certKey  string
 	debug    bool
