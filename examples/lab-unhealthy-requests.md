@@ -46,7 +46,7 @@ for IP in ${IPS_SRV}; do ssh ec2-user@$IP "openssl genrsa -out server.key
 export APP=t2-svc-https-hc-https
 export TG_NAME="mrb-app-tcp-https"
 export AWS_REGION=us-east-1
-TG_ARN=$(aws elbv2 describe-target-groups --region us-east-1 --query "TargetGroups[?TargetGroupName == \`${TG_NAME}\`].TargetGroupArn" --output text)
+export TG_ARN=$(aws elbv2 describe-target-groups --region us-east-1 --query "TargetGroups[?TargetGroupName == \`${TG_NAME}\`].TargetGroupArn" --output text)
 
 ./lab-app-server --app-name ${APP} \
   --service-port 6443 --service-proto https \
@@ -115,7 +115,7 @@ $ curl -ksw "%{http_code}" https://${NLB_DNS}:6443/ping -o /dev/null
 export APP=t2-svc-https-hc-https
 export TG_NAME="mrb-app-tcp-https"
 export AWS_REGION=us-east-1
-export NLB_DNS="mrb-app-accc54e9561c5081.elb.us-east-1.amazonaws.com"
+export NLB_DNS="mrb-5a9e2257539c1c39.elb.us-east-1.amazonaws.com"
 export GEN_REQ_INTERVAL_MS=100
 
 export TG_ARN=$(aws elbv2 describe-target-groups --region us-east-1 --query "TargetGroups[?TargetGroupName == \`${TG_NAME}\`].TargetGroupArn" --output text)
@@ -133,9 +133,11 @@ export TG_ARN=$(aws elbv2 describe-target-groups --region us-east-1 --query "Tar
     --termination-timeout 240 &
 ```
 
-- Wait the requests generator start: `reqc_client` > 1000
+- Wait the requests generator start and the node start receiving the requests. Metrics: 
+`reqc_client` > 0
+`reqc_service` > 0
 
-- Send the termination signal to force the HC to fail, then after some time kill the app to stop generate requests/logs
+- Send the termination signal to force the HC to fail and the target will transition to unhealthy state. After app back to the service, wait some time to force to finishand stop the requests generator
 
 ``` shell
 # Send sig term, the app will fail the HC and clean after 240s
@@ -155,7 +157,7 @@ for IP in $IPS_SRV; do scp ec2-user@${IP}:~/${APP}.log examples/${APP}-${IP}.log
 - Rename the ServerA to extract the metrics from it. Ex suffix -MASTER
 
 ``` shell
-mv examples/${APP}-50.19.175.83.log examples/${APP}-MASTER.log
+mv examples/${APP}-54.234.62.55.log examples/${APP}-MASTER.log
 ```
 
 - extract insights from logs: metrics in tsv
