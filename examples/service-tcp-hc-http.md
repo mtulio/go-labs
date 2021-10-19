@@ -81,13 +81,22 @@ for IP in $IP_SRV; do scp ec2-user@${IP}:~/mrb-tcp-https.log examples/mrb-tcp-ht
 Create a CSV
 
 ```
-echo -e "TIMESTAMP \t APP_TERMINATION \t APP_HEALTHY \t TG_HEALTHY \t TG_HEA_CNT \t TG_UNH_CNT \t REQ_HC_CNT" > examples/mrb-svc-tcp-hc-https.csv
-jq -r '. |select ( .type == "metrics" ) | .msg ' examples/mrb-tcp-https-54.83.236.78-TERM.log |jq -r ' [ .time , .app_termination, .app_healthy, .tg_healthy, .tg_health_count , .tg_unhealth_count , .reqc_hc ] | @tsv ' >> examples/mrb-svc-tcp-hc-https.csv
+LOG_FILE="examples/mrb-tcp-https-54.83.236.78-TERM.log"
+
+echo -e "TIMESTAMP \t APP_TERM \t APP_HEALTHY \t TG_HEALTHY \t TG_HEA_CNT \t TG_UNH_CNT \t REQ_HC_CNT" > ${LOG_FILE}.csv
+
+jq -r '. |select ( .type == "metrics" ) | .msg ' ${LOG_FILE} \
+  | jq -r ' [ .time , .app_termination, .app_healthy, .tg_healthy, .tg_health_count , .tg_unhealth_count , .reqc_hc ] | @tsv ' \
+  >> ${LOG_FILE}.csv
 ```
 
 Create a csv for tests with 3 nodes
 
 ```
 echo -e "TIMESTAMP \t APP_HEALTHY \t TG_HEALTHY \t TG_HEA_CNT \t TG_UNH_CNT \t REQ_HC_CNT" > mrb-svc-tcp-hc-https-3x.csv
-jq -r '. |select ( .type == "metrics" ) | .msg ' examples/mrb-svc-tcp-hc-https-3x-54.162.236.31.log |jq -r ' [ .time , .app_healthy, .tg_healthy, .tg_health_count , .tg_unhealth_count , .reqc_hc ] | @tsv ' >> mrb-svc-tcp-hc-https-3x.csv
+
+jq -r \
+  '. |select ( .type == "metrics" ) | .msg ' examples/mrb-svc-tcp-hc-https-3x-54.162.236.31.log \
+  | jq -r ' [ .time , .app_healthy, .tg_healthy, .tg_health_count , .tg_unhealth_count , .reqc_hc ] | @tsv ' \
+  >> mrb-svc-tcp-hc-https-3x.csv
 ```
