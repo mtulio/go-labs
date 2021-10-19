@@ -51,7 +51,7 @@ func (c *Curl) Loop(callback bool, callbackFN func(*http.Response)) {
 	if c.cfg.SlowStartSec > 0 {
 		msg := fmt.Sprintf("Starting client in  %ds", c.cfg.SlowStartSec)
 		c.e.Send("request-client", appName, msg)
-		time.Sleep(10 * time.Second)
+		time.Sleep(time.Duration(c.cfg.SlowStartSec) * time.Second)
 	}
 
 	for {
