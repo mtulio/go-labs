@@ -1,0 +1,3 @@
+[submodule "hack/deploy-infra/roles/mtulio.cloud-vpc"]
+	path = hack/deploy-infra/roles/mtulio.cloud-vpc
+	url = git@github.com:mtulio/ansible-role-cloud-vpc.git
