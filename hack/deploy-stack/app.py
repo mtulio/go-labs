@@ -48,11 +48,7 @@ class LabAppStack(cdk.Stack):
                   nat_gateways=0,
                   subnet_configuration=[
                     SubnetConfiguration(
-                        name="use1b-public",
-                        subnet_type=SubnetType.PUBLIC,
-                        cidr_mask=24), 
-                    SubnetConfiguration(
-                        name="use1a-public",
+                        name="public",
                         subnet_type=SubnetType.PUBLIC,
                         cidr_mask=24)
                 ]
@@ -77,7 +73,30 @@ class LabAppStack(cdk.Stack):
         #ubnets = ec2.SubnetSelection(subnet_type=SubnetType.PUBLIC)
         #print(subnets)
         
+        ##> IAM
+        # Instance Role and SSM Managed Policy
+        role = iam.Role(self, "lab-app-instance", assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"))
+        role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ReadOnlyAccess"))
 
+        ##> EC2 SG
+        ec2_sg = ec2.SecurityGroup(self, "sg-lab-app", vpc=vpc,
+            allow_all_outbound=True,
+            description='Lab App SG',
+        )
+        ec2_sg.add_ingress_rule(
+            ec2.Peer.ipv4("0.0.0.0/0"),
+            ec2.Port.tcp(22),
+            'Allow SSH')
+        ec2_sg.add_ingress_rule(
+            ec2.Peer.ipv4("0.0.0.0/0"),
+            ec2.Port.tcp(6443),
+            'Allow Service Port')
+        ec2_sg.add_ingress_rule(
+            ec2.Peer.ipv4("0.0.0.0/0"),
+            ec2.Port.tcp(6444),
+            'Allow Service Port')
+
+        ##> EC2
         with open("./user-data.sh") as f:
             user_data = f.read()
 
@@ -88,55 +107,31 @@ class LabAppStack(cdk.Stack):
             storage=ec2.AmazonLinuxStorage.GENERAL_PURPOSE
             )
 
-        # Instance Role and SSM Managed Policy
-        role = iam.Role(self, "lab-app-instance", assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"))
-        role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ReadOnlyAccess"))
-
         # Instance
         ec2_server01 = ec2.Instance(self, "lab-app-01",
             instance_type=ec2.InstanceType("t3.micro"),
             machine_image=amzn_linux,
             vpc = vpc,
             role = role,
-            vpc_subnets=ec2.SubnetSelection(
-                    subnet_group_name="use1a-public"),
+            #vpc_subnets=ec2.SubnetSelection(
+            #        subnet_group_name="use1a-public"),
             user_data=ec2.UserData.custom(user_data),
             key_name="openshift-dev",
-            )
+            security_group=ec2_sg,
+        )
 
         ec2_server02 = ec2.Instance(self, "lab-app-02",
             instance_type=ec2.InstanceType("t3.micro"),
             machine_image=amzn_linux,
             vpc = vpc,
             role = role,
-            vpc_subnets=ec2.SubnetSelection(
-                    subnet_group_name="use1b-public"),
+            #vpc_subnets=ec2.SubnetSelection(
+            #        subnet_group_name="use1b-public"),
             user_data=ec2.UserData.custom(user_data),
             key_name="openshift-dev",
-            )
+            security_group=ec2_sg,
+        )
 
-        # Script in S3 as Asset
-        # asset = Asset(self, "lab-app-assets", path=os.path.join(dirname, "user-data.sh"))
-        # local_path = instance.user_data.add_s3_download_command(
-        #     bucket=asset.bucket,
-        #     bucket_key=asset.s3_object_key
-        # )
-
-        # # Userdata executes script from S3
-        # instance.user_data.add_execute_file_command(
-        #     file_path=local_path
-        #     )
-        # asset.grant_read(instance.role)
-        
-        
-        # instance.user_data.add_execute_file_command(
-        #     file_path=userdata
-        #     )
-
-        # NetworkLoadBalancer(scope, id, *, cross_zone_enabled=None, vpc, 
-        # deletion_protection=None, internet_facing=None, load_balancer_name=None, vpc_subnets=None)
-        #subnets = ec2.SubnetSelection(availability_zones=["us-east-1a", "us-east-1b"])
-        
         lb = elbv2.NetworkLoadBalancer(
             self, "LB",
             vpc=vpc,
@@ -164,9 +159,11 @@ class LabAppStack(cdk.Stack):
             vpc=vpc,
         )
 
+        # create the default listener. ToDo fix it to support tg that is failing in register_listener()
         listener = lb.add_listener("Listener", port=6443)
-        # tg.register_listener(listener)
         listener.add_targets("Target", port=6443, targets=[])
+        
+        # tg.register_listener(listener)
 
 
 env = cdk.Environment(
