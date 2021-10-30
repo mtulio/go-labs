@@ -30,16 +30,6 @@ class LabAppStack(cdk.Stack):
     def __init__(self, app: cdk.App, id: str, **kwargs):
         super().__init__(app, id, **kwargs)
 
-        # Subnet configurations for a public and private tier
-        # subnet1 = SubnetConfiguration(
-        #         name="use1a-public",
-        #         subnet_type=SubnetType.PUBLIC,
-        #         cidr_mask=24)
-        # subnet2 = SubnetConfiguration(
-        #         name="use1b-public",
-        #         subnet_type=SubnetType.PUBLIC,
-        #         cidr_mask=24)
-
         vpc = ec2.Vpc(self, "VPC",
                 cidr="10.0.0.0/16",
                   enable_dns_hostnames=True,
@@ -70,8 +60,6 @@ class LabAppStack(cdk.Stack):
         cdk.CfnOutput(self, "vpcid", value=vpc.vpc_id)
 
         subnets = ec2.SubnetSelection(subnet_type=SubnetType.PUBLIC, one_per_az=True)
-        #ubnets = ec2.SubnetSelection(subnet_type=SubnetType.PUBLIC)
-        #print(subnets)
         
         ##> IAM
         # Instance Role and SSM Managed Policy
