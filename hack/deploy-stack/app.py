@@ -140,7 +140,7 @@ class LabAppStack(cdk.Stack):
             vpc_subnets=subnets,
             )
 
-        tg = elbv2.NetworkTargetGroup(self, "app-svc-tcp-hc-https",
+        tg_https = elbv2.NetworkTargetGroup(self, "app-svc-tcp-hc-https",
             port=6443, protocol=elbv2.Protocol.TCP,
             targets=[
                 elbv2.IpTarget(ec2_server01.instance_private_ip, port=6443),
@@ -158,6 +158,26 @@ class LabAppStack(cdk.Stack):
             target_type=elbv2.TargetType.IP,
             vpc=vpc,
         )
+        cdk.Tags.of(tg_https).add("Name", "app-svc-tcp-hc-https")
+
+        tg_http = elbv2.NetworkTargetGroup(self, "app-svc-tcp-hc-http",
+            port=6443, protocol=elbv2.Protocol.TCP,
+            targets=[
+                elbv2.IpTarget(ec2_server01.instance_private_ip, port=6443),
+                elbv2.IpTarget(ec2_server02.instance_private_ip, port=6443)
+            ],
+            health_check=elbv2.HealthCheck(
+                healthy_threshold_count=2,
+                interval=cdk.Duration.seconds(10),
+                path="/readyz",
+                port="6444",
+                protocol=elbv2.Protocol.HTTP,
+                unhealthy_threshold_count=2,
+            ),
+            target_type=elbv2.TargetType.IP,
+            vpc=vpc,
+        )
+        cdk.Tags.of(tg_http).add("Name", "app-svc-tcp-hc-http")
 
         # create the default listener. ToDo fix it to support tg that is failing in register_listener()
         listener = lb.add_listener("Listener", port=6443)
