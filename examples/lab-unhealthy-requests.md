@@ -43,8 +43,8 @@ for IP in ${IPS_SRV}; do ssh ec2-user@$IP "openssl genrsa -out server.key
 - Run the app on ServerB (ssh and run in background)
 
 ``` shell
-export APP=t2-svc-https-hc-https
-export TG_NAME="mrb-app-tcp-https"
+export APP=t11-svc-tcp-hc-https
+export TG_NAME="lab-a-appsv-P1IAY1I6W51O"
 export AWS_REGION=us-east-1
 export TG_ARN=$(aws elbv2 describe-target-groups --region us-east-1 --query "TargetGroups[?TargetGroupName == \`${TG_NAME}\`].TargetGroupArn" --output text)
 
@@ -105,17 +105,21 @@ $ curl -ksw "%{http_code}" https://${NLB_DNS}:6443/ping -o /dev/null
 200
 ```
 
-- Wait the target be healthy on the Target Group
+- Capture the packages (new window)
+
+``` shell
+sudo tcpdump -i eth0 tcp port 6443 or tcp port 6444 -w ${APP}.pcap
+```
 
 - Run the app on ServerA with request generator
 
 > Make sure all variables is correct
 
 ``` shell
-export APP=t2-svc-https-hc-https
-export TG_NAME="mrb-app-tcp-https"
+export APP=t11-svc-tcp-hc-https
+export TG_NAME="lab-a-appsv-P1IAY1I6W51O"
 export AWS_REGION=us-east-1
-export NLB_DNS="mrb-5a9e2257539c1c39.elb.us-east-1.amazonaws.com"
+export NLB_DNS="lab-a-LB8A1-T7Z5E46Y4CZR-d5d2049ddb7ffda2.elb.us-east-1.amazonaws.com"
 export GEN_REQ_INTERVAL_MS=100
 
 export TG_ARN=$(aws elbv2 describe-target-groups --region us-east-1 --query "TargetGroups[?TargetGroupName == \`${TG_NAME}\`].TargetGroupArn" --output text)
