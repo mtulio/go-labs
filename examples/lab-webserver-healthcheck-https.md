@@ -1,6 +1,6 @@
-# nginx service and hc servers
+# Web servers health check tests
 
-Lab to validate HTTPS health check endpoint reporting RST TCP packets on NLB metric (TCP_Target_Reset_Count).
+Lab to validate HTTPS health check endpoint reporting RST TCP packets on NLB metric (TCP_Target_Reset_Count) on Apache(httpd) and NGINX webservers.
 
 The basic architecture:
 - 2x EC2
