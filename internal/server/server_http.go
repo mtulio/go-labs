@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type ServerHTTP struct {
@@ -100,9 +101,47 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 					srv.config.event.Send("request", srv.config.name, string(data))
 				}
 				srv.config.metric.Inc("requests_hc")
+
 			}()
 
 			w.Write([]byte(respBody))
+
+			hConn := r.Header.Get("Connection")
+			if strings.ToLower(hConn) != "close" {
+				return
+			}
+
+			// close connection
+			//contentLength := strconv.Itoa(len(respBody))
+			//w.Header().Set("Content-Length", contentLength)
+			//w.Header().Set("X-Content-Length", contentLength)
+			w.Header().Del("Transfer-Encoding")
+
+			// Check that the rw can be hijacked.
+			hj, ok := w.(http.Hijacker)
+			//fmt.Println("finish 00")
+			// The rw can't be hijacked, return early.
+			if !ok {
+				srv.config.event.Send("request", srv.config.name, string("can't hijack rw"))
+				//fmt.Println("can't hijack rw")
+				return
+			}
+			//fmt.Println("finish 01")
+			// Hijack the rw.
+			conn, _, err := hj.Hijack()
+			if err != nil {
+				srv.config.event.Send("request", srv.config.name, string("hijack handle error conn"))
+				//fmt.Println("can't hijack rw")
+				return
+			}
+			//fmt.Println("finish 02")
+			// Close the hijacked raw tcp connection.
+			if err := conn.Close(); err != nil {
+				srv.config.event.Send("request", srv.config.name, string("hijack handle error Close"))
+				//fmt.Println("can't hijack rw")
+				return
+			}
+			//fmt.Println("finish 03")
 		})
 	}
 

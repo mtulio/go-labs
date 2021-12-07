@@ -10,6 +10,7 @@ generate-certs: deps
 
 build: deps
 	go build -o ./bin/lab-app-server ./cmd/lab-app-server/
+	strip ./bin/lab-app-server
 
 # build single service
 build-single:
