@@ -16,6 +16,7 @@ const (
 
 type Server interface {
 	Start()
+	StartController()
 	//ShutdownHealthy() error
 	//GetType() string
 	//GetState() bool
