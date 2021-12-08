@@ -164,6 +164,7 @@ func (srv *ServerTCP) StartController() {
 			return
 		}
 
+		log.Println(srv.config.hc.GetHealthy(), srv.ServerPortIsOpen())
 		// State> health check is failing and server is up.
 		// Action: Server needs to be stopped
 		if !(srv.config.hc.GetHealthy()) && (srv.ServerPortIsOpen()) {
