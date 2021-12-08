@@ -49,7 +49,7 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 	})
 
 	srv.listener.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		respBody := fmt.Sprintf("Available routes: \n/healthy\n/ping")
+		respBody := fmt.Sprintf("Available routes: \n/ping\n/%s", cfg.hcPath)
 		w.Header().Set("Content-Type", "text/plain")
 
 		go func() {
