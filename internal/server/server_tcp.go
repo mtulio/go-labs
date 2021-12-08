@@ -164,7 +164,6 @@ func (srv *ServerTCP) StartController() {
 			return
 		}
 
-		log.Println(srv.config.hc.GetHealthy(), srv.ServerPortIsOpen())
 		// State> health check is failing and server is up.
 		// Action: Server needs to be stopped
 		if !(srv.config.hc.GetHealthy()) && (srv.ServerPortIsOpen()) {
@@ -184,14 +183,14 @@ func (srv *ServerTCP) StartController() {
 			continue
 		}
 
-		// State> Normal operation
-		// Health check is success and server.
+		// State> Health check failing and server is down.
+		// Action: register the event and wait to to reconcile period
 		if !(srv.config.hc.GetHealthy()) && !(srv.ServerPortIsOpen()) {
 			srv.sendEvent("TCP Server controller: health check is failing and server is stopped, waiting to state change")
 		}
 
-		// Last state> Health check failing and server is down.
-		// Action: Wait to the next cycle to check the HC state.
+		// Last state> Health check and server listening successfully.
+		// Action: wait to to reconcile period.
 		srv.ControllerWaiter(waitReconcile)
 	}
 }
