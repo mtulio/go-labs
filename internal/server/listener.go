@@ -196,10 +196,11 @@ func NewListener(op *ListenerOptions) (*Listener, error) {
 func (l *Listener) Start() error {
 	l.Event.Send("runtime", "listener", "Starting services...")
 
-	// Start HC Controller
+	// Start Health Check Controller
 	go l.controllerHC.Start()
 
-	// Start HC server
+	// Start Health Check server
+	go l.serverHC.StartController()
 	go l.serverHC.Start()
 
 	// Start Service server

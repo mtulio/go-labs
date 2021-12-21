@@ -49,7 +49,7 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 	})
 
 	srv.listener.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		respBody := fmt.Sprintf("Available routes: \n/healthy\n/ping")
+		respBody := fmt.Sprintf("Available routes: \n/ping\n/%s", cfg.hcPath)
 		w.Header().Set("Content-Type", "text/plain")
 
 		go func() {
@@ -73,7 +73,7 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 		}
 		srv.listener.HandleFunc(cfg.hcPath, func(w http.ResponseWriter, r *http.Request) {
 			code := 200
-			respBody := fmt.Sprintf("%s", srv.config.hc.GetHealthyStr())
+			respBody := srv.config.hc.GetHealthyStr()
 			w.Header().Set("Content-Type", "text/plain")
 			if !srv.config.hc.GetHealthy() {
 				code = 500
@@ -89,13 +89,6 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 					Code: code,
 				}
 				data, _ := json.Marshal(req)
-				// event := `{
-				// 	"response": {
-				// 		"body": respBody,
-				// 		"code": code
-				// 	},
-				// 	"request": r
-				// }`
 				if srv.config.debug {
 					srv.config.event.Send("request", srv.config.name, string(data))
 				}
@@ -126,4 +119,8 @@ func (srv *ServerHTTP) Start() {
 		)
 	}
 	log.Fatal(http.ListenAndServe(port, srv.listener))
+}
+
+// StartController will do nothing in HTTP/S servers (only TCP).
+func (srv *ServerHTTP) StartController() {
 }
