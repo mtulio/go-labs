@@ -195,8 +195,8 @@ func main() {
 
 	// Need to process the error queue here
 	// reprocessing error users
+	log.Printf("Re-run failed users count: %d \n", len(usersError))
 	for _, user := range usersError {
-		log.Printf("Processing error queue len: %d \n", len(usersError))
 		wr.Add(1)
 		listTagsInput := &iam.ListUserTagsInput{
 			UserName: aws.String(*user.UserName),
@@ -205,7 +205,6 @@ func main() {
 		totalRetried += 1
 		listUsersTags, err := iamClient.ListUserTags(context.TODO(), listTagsInput)
 		if err != nil {
-			// ToDo: retrieve users that had errors to process tags
 			fmt.Println(err.Error())
 			//re-enqueue
 			usersError = append(usersError, user)
@@ -226,12 +225,11 @@ func main() {
 	wr.Wait()
 
 	log.Println("Waiting User's found processor...")
-	// log.Println(totalArnsProcessed)
 	wf.Wait()
-	// log.Println(totalArnsProcessed)
+
 	log.Println("Waiting User's not found processor...")
 	wn.Wait()
-	// log.Println(totalArnsProcessed)
+
 	log.Println("Waiting User's lookup error processor...")
 	we.Wait()
 
