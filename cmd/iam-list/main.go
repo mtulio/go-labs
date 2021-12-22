@@ -5,13 +5,40 @@ import (
 	// "io"
 
 	"fmt"
+	"log"
+	"os"
 	"sync"
+	"time"
+
+	flag "github.com/spf13/pflag"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 )
+
+var (
+	op          *string = flag.String("operation", "list", "Operations: list | filter")
+	filterKey   *string = flag.String("filter-tag", "", "Tag Key to filter. required when filter")
+	filterValue *string = flag.String("filter-value", "", "Tag Value to filter. required when filter")
+)
+
+func init() {
+	flag.Parse()
+	switch *op {
+	case "list":
+		fmt.Println("Running as 'sync' mode")
+	case "filter":
+		if *filterKey == "" || *filterValue == "" {
+			fmt.Println("missing --filter-(tag|value)")
+			os.Exit(1)
+		}
+	default:
+		fmt.Printf("Operation %s not found\n", *op)
+		os.Exit(-1)
+	}
+}
 
 func getUser(userName string) {
 	svc := iam.New(session.New())
@@ -41,7 +68,10 @@ func getUser(userName string) {
 	fmt.Println(result)
 }
 
+func noop(i interface{}) {}
+
 func main() {
+	start := time.Now()
 	svc := iam.New(session.New())
 	input := &iam.ListUsersInput{}
 
@@ -64,16 +94,19 @@ func main() {
 	//fmt.Println(result)
 	// chUsers := make(chan *iam.User, 5)
 	//chArnsExist := make(chan *string)
-	chArnsFound := make(chan *string)
+	chArnsFound := make(chan *string, 1)
+	chArnsNotFound := make(chan *string, 1)
 	//chDone := make(bool)
 	// var done sync.WaitGroup
 	arns := []string{}
+	arnsNF := []string{}
 
 	wp := &sync.WaitGroup{}
 	wc := &sync.WaitGroup{}
+	wn := &sync.WaitGroup{}
 
 	wp.Add(len(result.Users))
-	wc.Add(len(result.Users))
+
 	// wc.Add(consumerCount)
 	fmt.Println(len(result.Users))
 	// go func() {
@@ -90,11 +123,20 @@ func main() {
 	var totalArnsProcessed int = 0
 	go func() {
 		for arn := range chArnsFound {
-			fmt.Printf("-> UserARN= %s\n", *arn)
+			//fmt.Printf("-> UserARN= %s\n", *arn)
 			arns = append(arns, *arn)
 			totalArnsProcessed += 1
-			fmt.Println(totalArnsProcessed)
+			//fmt.Println(totalArnsProcessed)
 			wc.Done()
+		}
+	}()
+	go func() {
+		for arn := range chArnsNotFound {
+			//fmt.Printf("-> UserARN= %s\n", *arn)
+			arnsNF = append(arnsNF, *arn)
+			//totalArnsProcessed += 1
+			//fmt.Println(totalArnsProcessed)
+			wn.Done()
 		}
 	}()
 	for _, user := range result.Users {
@@ -104,8 +146,27 @@ func main() {
 		go func(u *iam.User) {
 			defer wp.Done()
 			//getUser(*u.UserName)
-			fmt.Printf("-> User= %s\n", *u.UserName)
-			go func() { chArnsFound <- u.Arn }()
+			//fmt.Printf("-> User= %s\n", *u.UserName)
+			//go func() { chArnsFound <- u.Arn }()
+			listTagsInput := &iam.ListUserTagsInput{
+				UserName: aws.String(*u.UserName),
+			}
+			listUsersTags, err := svc.ListUserTags(listTagsInput)
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				for _, tag := range listUsersTags.Tags {
+					//fmt.Printf("- %s=%s \n", *tag.Key, *tag.Value)
+					if (*tag.Key == *filterKey) && (*tag.Value == *filterValue) {
+						wc.Add(1)
+						chArnsFound <- u.Arn
+					} else {
+						wn.Add(1)
+						chArnsNotFound <- u.Arn
+					}
+				}
+			}
+
 		}(user)
 	}
 	fmt.Println("Waiting...1")
@@ -114,7 +175,14 @@ func main() {
 	fmt.Println(totalArnsProcessed)
 	wc.Wait()
 	fmt.Println(totalArnsProcessed)
+	fmt.Println("Waiting...3")
+	wn.Wait()
+	fmt.Println(totalArnsProcessed)
 	//done.Wait()
 	// fmt.Println(len(result.Users))
 	// fmt.Println(len(arns))
+	elapsed := time.Since(start)
+	log.Printf("took %s \n", elapsed)
+	fmt.Printf("TotalUsers=[%d], Found=[%d] NoFound=[%d]\n", len(result.Users), len(arns), len(arnsNF))
+	fmt.Println(arns)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,12 +19,25 @@ import (
 )
 
 var (
-	runMode *string = flag.String("run-mode", "async", "Run mode. Modes: sync | async")
+	runMode *string = flag.String("run-mode", "", "Run mode. Modes: sync | async")
 )
 
-func main() {
-	fmt.Printf("Setup client retry strategy...\n")
+func init() {
+	flag.Parse()
+	switch *runMode {
+	case "sync":
+		fmt.Println("Running as 'sync' mode")
+	case "async":
+		fmt.Println("Running as 'async' mode")
+	default:
+		fmt.Printf("Mode %s not found\n", *runMode)
+		os.Exit(-1)
+	}
+}
 
+func main() {
+
+	fmt.Printf("Setup client retry strategy...\n")
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.NewStandard(func(o *retry.StandardOptions) {
@@ -37,22 +51,17 @@ func main() {
 		panic(err)
 	}
 
-	flag.Parse()
 	iamClient := iam.NewFromConfig(cfg)
 	switch *runMode {
 	case "sync":
-		fmt.Println("Running as 'sync' mode")
 		indexUsersSync(iamClient)
 	case "async":
-		fmt.Println("Running as 'sync' mode")
 		indexUsersAsync(iamClient)
 	default:
 		fmt.Printf("Mode %s not found\n", *runMode)
 	}
 
 }
-
-var onErrorSleep = 5
 
 func indexUserAsync(iamClient *iam.Client, userName string, errorCount int64) {
 	//fmt.Printf("--- %s \n", userName)
@@ -108,23 +117,22 @@ func indexUsersAsync(iamClient *iam.Client) {
 
 	log.Printf("Indexing %d users", len(userNames))
 	// time.Sleep(5 * time.Second)
-	var errorCount int64
-	errorCount = 0
+	var errorCount int64 = 0
 	wg := sync.WaitGroup{}
 	for _, userName := range userNames {
 		wg.Add(1)
-		go func() {
+		go func(u string) {
 			defer wg.Done()
 			indexUserAsync(
 				iamClient,
-				userName,
+				u,
 				errorCount,
 			)
-		}()
+		}(userName)
 	}
 	wg.Wait()
 	elapsed := time.Since(start)
-	log.Printf("indexUsersAsync took %s and %d \n", elapsed, errorCount)
+	log.Printf("indexUsersAsync took %s, with %d errors\n", elapsed, errorCount)
 }
 
 func indexUsersSync(iamClient *iam.Client) {
