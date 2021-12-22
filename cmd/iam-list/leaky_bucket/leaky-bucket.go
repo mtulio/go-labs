@@ -47,31 +47,30 @@ func init() {
 }
 
 func main() {
-	// var wg sync.WaitGroup
-	wg := &sync.WaitGroup{}
-	wc := &sync.WaitGroup{}
-	wn := &sync.WaitGroup{}
-	we := &sync.WaitGroup{}
-	chArnsFound := make(chan *string, 30)
-	chArnsNF := make(chan *string, 30)
-	chArnsErr := make(chan *string, 30)
-	arnsFound := []string{}
-	//arnsNF := []string{}
-	arnsErr := []string{}
-	totalArnsNF := 0
-	totalListing := 0
+	wl := &sync.WaitGroup{} // main/list
+	wf := &sync.WaitGroup{} // found
+	wn := &sync.WaitGroup{} // not found
+	we := &sync.WaitGroup{} // error
+	wr := &sync.WaitGroup{} // retry
+	chFound := make(chan *string, 30)
+	chNFound := make(chan *string, 30)
+	chErr := make(chan *types.User, 30)
+	usersFoundArn := []string{}
+	usersError := []*types.User{}
+	totalNFound := 0
+	totalListed := 0
+	totalRetried := 0
 
 	log.Println("Starting leaky bucket control")
-	// log.Println("01")
-	// limit concurrency to 5
+	// limit concurrency to N
 	semaphore := make(chan struct{}, 50)
 
-	// have a max rate of 10/sec
+	// have a max rate of N/sec
 	rate := make(chan struct{}, 100)
 	for i := 0; i < cap(rate); i++ {
 		rate <- struct{}{}
 	}
-	// log.Println("02")
+
 	// leaky bucket
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
@@ -85,11 +84,11 @@ func main() {
 			}
 		}
 	}()
-	// log.Println("03")
+
 	log.Println("Setting up AWS client")
 	start := time.Now()
 
-	// IAM
+	// IAM client setup
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.NewStandard(func(o *retry.StandardOptions) {
@@ -104,31 +103,31 @@ func main() {
 	}
 	iamClient := iam.NewFromConfig(cfg)
 
-	log.Println("Starting ARNs processors...")
+	log.Println("Starting data processors...")
 	go func() {
-		for arn := range chArnsFound {
-			arnsFound = append(arnsFound, *arn)
-			wc.Done()
+		for arn := range chFound {
+			usersFoundArn = append(usersFoundArn, *arn)
+			wf.Done()
 		}
 	}()
 	go func() {
-		for range chArnsNF {
+		for range chNFound {
 			//arnsNF = append(arnsNF, *arn)
-			totalArnsNF += 1
+			totalNFound += 1
 			wn.Done()
 		}
 	}()
 	go func() {
-		for arn := range chArnsErr {
-			arnsErr = append(arnsErr, *arn)
+		for user := range chErr {
+			usersError = append(usersError, user)
 			we.Done()
 		}
 	}()
 	defer func() {
 		close(rate)
-		close(chArnsFound)
-		close(chArnsNF)
-		close(chArnsErr)
+		close(chFound)
+		close(chNFound)
+		close(chErr)
 	}()
 
 	input := &iam.ListUsersInput{}
@@ -148,16 +147,10 @@ func main() {
 
 		for _, user := range output.Users {
 			totalUsers += 1
-			// if (totalUsers % 100) == 0 {
-			// 	log.Println(totalUsers)
-			// }
-			//fmt.Printf("[%d] Starting.... %s\n", totalUsers, *user.UserName)
-			// fmt.Printf("Starting.... %s\n", *u.UserName)
-
-			wg.Add(1)
+			wl.Add(1)
 			go func(u types.User, cnt int) {
-				//fmt.Printf("[%d]> starting concurrency.... %s\n", totalUsers, *u.UserName)
-				defer wg.Done()
+				defer wl.Done()
+
 				// wait for the rate limiter
 				rate <- struct{}{}
 
@@ -166,9 +159,7 @@ func main() {
 				defer func() {
 					<-semaphore
 				}()
-				//fmt.Printf("[%d]> bucket released... %s\n", cnt, *u.UserName)
-				// wait for the rate limiter
-				// fmt.Printf("Listing tags for user %s\n", *u.UserName)
+
 				// retrieve tags
 				if (cnt % 500) == 0 {
 					log.Printf("IAM Users finder: Still processing %d of %d\n", cnt, totalUsers)
@@ -177,21 +168,21 @@ func main() {
 					UserName: aws.String(*u.UserName),
 				}
 				// will wait until any channel is busy
-				totalListing += 1
+				totalListed += 1
 				listUsersTags, err := iamClient.ListUserTags(context.TODO(), listTagsInput)
 				if err != nil {
+					// ToDo: retrieve users that had errors to process tags
 					fmt.Println(err.Error())
 					we.Add(1)
-					chArnsErr <- u.Arn
+					chErr <- &u
 				} else {
 					for _, tag := range listUsersTags.Tags {
-						//fmt.Printf("- %s=%s \n", *tag.Key, *tag.Value)
 						if (*tag.Key == *filterKey) && (*tag.Value == *filterValue) {
-							wc.Add(1)
-							chArnsFound <- u.Arn
+							wf.Add(1)
+							chFound <- u.Arn
 						} else {
 							wn.Add(1)
-							chArnsNF <- u.Arn
+							chNFound <- u.Arn
 						}
 					}
 				}
@@ -199,16 +190,44 @@ func main() {
 		}
 	}
 
-	log.Println("Waiting User's tag lookup...")
-	wg.Wait()
-	// close(rate)
+	log.Println("Waiting User's tags lookup...")
+	wl.Wait()
 
-	// dur := time.Since(start)
-	// log.Println("duration=", dur)
+	// Need to process the error queue here
+	// reprocessing error users
+	for _, user := range usersError {
+		log.Printf("Processing error queue len: %d \n", len(usersError))
+		wr.Add(1)
+		listTagsInput := &iam.ListUserTagsInput{
+			UserName: aws.String(*user.UserName),
+		}
+		// will wait until any channel is busy
+		totalRetried += 1
+		listUsersTags, err := iamClient.ListUserTags(context.TODO(), listTagsInput)
+		if err != nil {
+			// ToDo: retrieve users that had errors to process tags
+			fmt.Println(err.Error())
+			//re-enqueue
+			usersError = append(usersError, user)
+		} else {
+			for _, tag := range listUsersTags.Tags {
+				if (*tag.Key == *filterKey) && (*tag.Value == *filterValue) {
+					wf.Add(1)
+					chFound <- user.Arn
+				} else {
+					wn.Add(1)
+					chNFound <- user.Arn
+				}
+			}
+		}
+		wr.Done()
+	}
+	log.Println("Waiting retry processor...")
+	wr.Wait()
 
 	log.Println("Waiting User's found processor...")
 	// log.Println(totalArnsProcessed)
-	wc.Wait()
+	wf.Wait()
 	// log.Println(totalArnsProcessed)
 	log.Println("Waiting User's not found processor...")
 	wn.Wait()
@@ -218,7 +237,7 @@ func main() {
 
 	elapsed := time.Since(start)
 	log.Printf("took %s \n", elapsed)
-	log.Printf("TotalUsers=[%d], Found=[%d] NoFound=[%d] Errors=[%d]\n", totalUsers, len(arnsFound), totalArnsNF, len(arnsErr))
-	log.Println(arnsFound)
-	log.Println(totalListing)
+	log.Printf("TotalUsers=[%d], Found=[%d] NoFound=[%d] Errors=[%d]\n", totalUsers, len(usersFoundArn), totalNFound, len(usersError))
+	log.Println(totalListed)
+	log.Println(totalRetried)
 }
