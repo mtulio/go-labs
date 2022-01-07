@@ -18,6 +18,9 @@ build-single:
 build-k8sapi:
 	go build -o ./bin/lab-k8sapi-watcher ./cmd/lab-k8sapi-watcher/
 
+build-lbwatcher:
+	go build -o ./bin/lb-watcher ./cmd/lb-watcher/
+
 build-all:
 	$(MAKE) build
 	$(MAKE) build-k8sapi
