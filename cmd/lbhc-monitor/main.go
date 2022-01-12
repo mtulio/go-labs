@@ -10,14 +10,12 @@ This tools will observe:
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,6 +23,7 @@ import (
 
 	"github.com/mtulio/go-lab-api/internal/event"
 	"github.com/mtulio/go-lab-api/internal/metric"
+	"github.com/mtulio/go-lab-api/internal/utils"
 	"github.com/mtulio/go-lab-api/internal/watcher"
 )
 
@@ -40,24 +39,27 @@ type Watcher struct {
 }
 
 var (
-	logPath      *string = flag.String("log-path", "", "help message for flagname")
-	urlsInt      *string = flag.String("url-targets", "", "List of internal URLs of targets to watch / make requests.  Example: https://10.5.5.5:port/path,https://10.5.5.5:6443/readyz")
-	urlExt       *string = flag.String("url-lb", "", "Public URL Load Balancer to monitor / make requests. Example: https://LB_DNS:port/path")
-	watchLBAwsTg *string = flag.String("lb-aws-target-group-arn", "", "AWS NLB Target Group ARN to watch")
-	w            *Watcher
+	logPath       *string = flag.String("log-path", "", "help message for flagname")
+	urlTargets    *string = flag.String("url-targets", "", "List of internal URLs of targets to watch / make requests.  Example: https://10.5.5.5:port/path,https://10.5.5.5:6443/readyz")
+	urlLb         *string = flag.String("url-lb", "", "Public URL Load Balancer to monitor / make requests. Example: https://LB_DNS:port/path")
+	lbProvider    *string = flag.String("lb-provider", "", "AWS NLB Target Group ARN to watch")
+	lbId          *string = flag.String("lb-id", "", "Load Balancer ID. For AWS NLB Target Group ARN to watch")
+	monitMode     *string = flag.String("mode", "sync", "Monitor mode: sync|async. Sync will monitor on Prometheus scrape. Async will start a thread to monit it in --interval.")
+	monitInterval *int    = flag.Int("interval", 5, "Interval in seconds to monitor resources. Default: 5")
+	w             *Watcher
 )
 
 func init() {
 	flag.Parse()
-	if *watchLBAwsTg == "" {
+	if *lbId == "" {
 		fmt.Println("Target Group ARN must be set: --target-group-arn")
 		os.Exit(1)
 	}
-	if *urlsInt == "" {
+	if *urlTargets == "" {
 		fmt.Println("Kube-apiserver endpoints must be set. Example: https://10.0.0.1:6443/readyz,https://10.0.0.2:6443/readyz")
 		os.Exit(1)
 	}
-	if *urlExt == "" {
+	if *urlLb == "" {
 		fmt.Println("NLB Public endpoint must be set. Example: https://nlb-public-dns.elb.us-east-1.amazonaws.com:6443/readyz")
 		os.Exit(1)
 	}
@@ -65,8 +67,8 @@ func init() {
 	wname := "lb-watcher"
 	w = &Watcher{
 		name:    wname,
-		intURLs: strings.Split(*urlsInt, ","),
-		extURL:  *urlExt,
+		intURLs: strings.Split(*urlTargets, ","),
+		extURL:  *urlLb,
 		e:       event.NewEventHandler(wname, *logPath),
 		finish:  false,
 	}
@@ -75,89 +77,39 @@ func init() {
 
 func main() {
 	// Start metrics dumper/pusher
-	go w.m.StartPusher()
+	if *monitMode == "async" {
+		go w.m.StartPusher()
+	}
 
-	// start watching target group to extract metrics
-	// dry-run / run locally
-	if *watchLBAwsTg != "" {
+	if *lbId != "" {
 		tgw, err := watcher.NewTargetGroupWatcher(&watcher.TGWatcherOptions{
-			ARN:    *watchLBAwsTg,
+			ARN:    *lbId,
 			Metric: w.m,
 		})
 		if err != nil {
 			log.Fatal(err)
 		}
 		w.awsTgW = tgw
-		go tgw.Start()
+		if *monitMode == "async" {
+			go tgw.Start()
+		}
 	}
 
-	// start apiserver client requests
-	//> start
-	// initWatcherInternalURLs(w)
-	// initWatcherExternalURL(w)
-	// w.wg.Wait()
-
+	serverPort := ":9999"
+	exporterPath := "/metrics"
 	exporter := NewWatcherCollector()
 	prometheus.MustRegister(exporter)
 
-	http.Handle("/metrics", promhttp.Handler())
-	log.Fatal(http.ListenAndServe(":9999", nil))
-}
-
-func initWatcherInternalURLs(w *Watcher) {
-	for _, url := range w.intURLs {
-		w.wg.Add(1)
-		go func(u string) {
-			defer w.wg.Done()
-			for {
-				healthy := makeRequest(w.e, u)
-				log.Println(u, healthy)
-				//m.Inc("requests_hc")
-				time.Sleep(1 * time.Second)
-				if w.finish {
-					return
-				}
-			}
-		}(url)
-	}
-}
-
-func initWatcherExternalURL(w *Watcher) {
-	w.wg.Add(1)
-	go func(u string) {
-		defer w.wg.Done()
-		for {
-			healthy := makeRequest(w.e, u)
-			log.Println(u, healthy)
-			//m.Inc("requests_hc")
-			time.Sleep(1 * time.Second)
-			if w.finish {
-				return
-			}
-		}
-	}(w.extURL)
-}
-
-func makeRequest(e *event.EventHandler, url string) bool {
-	tlsCfg := tls.Config{InsecureSkipVerify: true}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsCfg
-	client := http.Client{
-		Timeout: 1 * time.Second,
-	}
-	resp, err := client.Get(url)
-	if err != nil {
-		msg := fmt.Sprintf("ERROR [%s] received from server. Delaying 10s: %s", url, err)
-		e.Send("request-client", url, msg)
-		return false
-	}
-
-	return (resp.StatusCode >= 200 && resp.StatusCode < 400)
+	log.Printf("Starting http server on port %s", serverPort)
+	http.Handle(exporterPath, promhttp.Handler())
+	log.Fatal(http.ListenAndServe(serverPort, nil))
 }
 
 type watcherCollector struct {
-	urlReqSuccessMetric  *prometheus.Desc
-	urlReqTotalMetric    *prometheus.CounterVec
-	lbTargetHealthMetric *prometheus.Desc
+	urlReqSuccessMetric    *prometheus.Desc
+	urlReqTotalMetric      *prometheus.CounterVec
+	lbTargetHealthMetric   *prometheus.Desc
+	lbTargetReqTotalMetric *prometheus.CounterVec
 }
 
 func NewWatcherCollector() *watcherCollector {
@@ -172,7 +124,7 @@ func NewWatcherCollector() *watcherCollector {
 		// ),
 		urlReqTotalMetric: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name: "url_request_total",
+				Name: "url_requests_total",
 				Help: "Number of requests to endpoints.",
 			},
 			[]string{"target", "type"},
@@ -181,18 +133,23 @@ func NewWatcherCollector() *watcherCollector {
 			"Boolean indicating if the target is healthy on LB",
 			[]string{"target"}, nil,
 		),
+		lbTargetReqTotalMetric: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "lb_target_requests_total",
+				Help: "Number of requests to discovery LB targets.",
+			},
+			[]string{"type"},
+		),
 	}
 	prometheus.MustRegister(w.urlReqTotalMetric)
+	prometheus.MustRegister(w.lbTargetReqTotalMetric)
 	return w
 }
 
-//Each and every collector must implement the Describe function.
-//It essentially writes all descriptors to the prometheus desc channel.
+//Describe essentially writes all descriptors to the prometheus desc channel.
 func (collector *watcherCollector) Describe(ch chan<- *prometheus.Desc) {
 
-	//Update this section with the each metric you create for a given collector
 	ch <- collector.urlReqSuccessMetric
-	// ch <- collector.urlReqTotalMetric
 	ch <- collector.lbTargetHealthMetric
 }
 
@@ -201,8 +158,8 @@ func (collector *watcherCollector) Collect(ch chan<- prometheus.Metric) {
 	wname := "lb-watcher-collector"
 	wc := &Watcher{
 		name:    wname,
-		intURLs: strings.Split(*urlsInt, ","),
-		extURL:  *urlExt,
+		intURLs: strings.Split(*urlTargets, ","),
+		extURL:  *urlLb,
 		finish:  false,
 	}
 
@@ -211,17 +168,10 @@ func (collector *watcherCollector) Collect(ch chan<- prometheus.Metric) {
 		wc.wg.Add(1)
 		go func(u string) {
 			defer wc.wg.Done()
-			healthy := makeRequest(w.e, u)
-			//log.Println(u, healthy)
-			//time.Sleep(1 * time.Second)
-			var vHealthy float64 = 0
-			if healthy {
-				vHealthy = 1
-			}
 			ch <- prometheus.MustNewConstMetric(
 				collector.urlReqSuccessMetric,
 				prometheus.CounterValue,
-				vHealthy,
+				utils.CheckRequestRespHealthyMetric(utils.MakeRequest(w.e, u)),
 				u, "target",
 			)
 			collector.urlReqTotalMetric.WithLabelValues(u, "target").Inc()
@@ -232,20 +182,13 @@ func (collector *watcherCollector) Collect(ch chan<- prometheus.Metric) {
 	wc.wg.Add(1)
 	go func(u string) {
 		defer wc.wg.Done()
-		healthy := makeRequest(w.e, u)
-		//log.Println(u, healthy)
-		//m.Inc("requests_hc")
-		var vHealthy float64 = 0
-		if healthy {
-			vHealthy = 1
-		}
 		ch <- prometheus.MustNewConstMetric(
 			collector.urlReqSuccessMetric,
 			prometheus.CounterValue,
-			vHealthy,
+			utils.CheckRequestRespHealthyMetric(utils.MakeRequest(w.e, u)),
 			u, "lb",
 		)
-		collector.urlReqTotalMetric.WithLabelValues(u, "target").Inc()
+		collector.urlReqTotalMetric.WithLabelValues(u, "lb").Inc()
 	}(wc.extURL)
 
 	// collect TG healthy info
@@ -253,16 +196,15 @@ func (collector *watcherCollector) Collect(ch chan<- prometheus.Metric) {
 	go func() {
 		defer wc.wg.Done()
 		respTg := w.awsTgW.Collect()
-		log.Println(respTg)
 		for k, v := range *respTg {
-			log.Println(k)
 			ch <- prometheus.MustNewConstMetric(
-				collector.urlReqSuccessMetric,
+				collector.lbTargetHealthMetric,
 				prometheus.CounterValue,
 				float64(v),
-				k, "lb",
+				k,
 			)
 		}
+		collector.lbTargetReqTotalMetric.WithLabelValues("lb").Inc()
 	}()
 
 	wc.wg.Wait()

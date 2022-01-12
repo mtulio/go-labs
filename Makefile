@@ -21,6 +21,11 @@ build-k8sapi:
 build-lbwatcher:
 	go build -o ./bin/lb-watcher ./cmd/lb-watcher/
 
+# lbhc tools
+build-lbhc-monitor:
+	go build -o ./bin/lbhc-monitor ./cmd/lbhc-monitor/
+
+
 build-all:
 	$(MAKE) build
 	$(MAKE) build-k8sapi

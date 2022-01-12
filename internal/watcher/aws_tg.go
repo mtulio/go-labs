@@ -112,27 +112,14 @@ func (tg *TargetGroupWatcher) Collect() *TGTargetHealthy {
 		}
 		return &m
 	}
-	// fmt.Println(result)
-	// healthCount := 0
-	// unhealthyCount := 0
-	log.Println(result)
+
 	for _, d := range result.TargetHealthDescriptions {
-		//fmt.Println(*d.TargetHealth.State, *d.TargetHealth.Reason)
 		healthy := 0
 		if *d.TargetHealth.State == "healthy" {
-			// healthCount += 1
 			healthy = 1
-			// continue
 		}
-		// unhealthyCount += 1
-		log.Println(healthy, d.TargetHealth)
 		m[*(d.Target.Id)] = healthy
 	}
-	log.Println(m)
-	// tg.options.Metric.TargetHealthy = (unhealthyCount == 0)
-	// tg.options.Metric.TargetHealthCount = uint64(healthCount)
-	// tg.options.Metric.TargetUnhealthCount = uint64(unhealthyCount)
-	// time.Sleep(1 * time.Second)
 
 	return &m
 }
