@@ -25,6 +25,8 @@ build-lbwatcher:
 build-lbhc-monitor:
 	go build -o ./bin/lbhc-monitor ./cmd/lbhc-monitor/
 
+build-lbhc-app:
+	go build -o ./bin/lbhc-app ./cmd/lab-app-server/
 
 build-all:
 	$(MAKE) build
