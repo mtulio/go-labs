@@ -8,10 +8,12 @@ import (
 type Protocol uint8
 
 const (
-	ProtoTCP Protocol = iota
-	ProtoTLS
-	ProtoHTTP
-	ProtoHTTPS
+	ProtoTCP      Protocol = iota
+	ProtoTLS      Protocol = iota
+	ProtoHTTP     Protocol = iota
+	ProtoHTTPS    Protocol = iota
+	ServerTypeHC  uint8    = iota
+	ServerTypeSvc uint8    = iota
 )
 
 type Server interface {
@@ -35,6 +37,7 @@ type ServerConfig struct {
 	certPem  string
 	certKey  string
 	debug    bool
+	sType    uint8
 }
 
 func GetProtocolFromStr(proto string) Protocol {
@@ -49,4 +52,30 @@ func GetProtocolFromStr(proto string) Protocol {
 		return ProtoHTTPS
 	}
 	return ProtoHTTP
+}
+
+func GetServerTypeFromStr(t string) uint8 {
+	switch t {
+	case "healthcheck":
+		return ServerTypeHC
+	case "hc":
+		return ServerTypeHC
+	case "service":
+		return ServerTypeSvc
+	case "svc":
+		return ServerTypeSvc
+	default:
+		return ServerTypeSvc
+	}
+}
+
+func GetServerTypeToStr(t uint8) string {
+	switch t {
+	case ServerTypeHC:
+		return "healthcheck"
+	case ServerTypeSvc:
+		return "service"
+	default:
+		return "service"
+	}
 }

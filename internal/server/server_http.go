@@ -22,8 +22,11 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 	srv.listener = http.NewServeMux()
 
 	srv.listener.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		respBody := fmt.Sprintf("pong")
 		w.Header().Set("Content-Type", "text/plain")
+
+		respBody := fmt.Sprintf("pong")
+		m := srv.config.metric
+		path := "/ping"
 
 		go func() {
 			type EventRequest struct {
@@ -38,10 +41,13 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 			if srv.config.debug {
 				srv.config.event.Send("request", srv.config.name, string(data))
 			}
+
 			if srv.config.hcServer {
-				srv.config.metric.Inc("requests_hc")
+				m.Inc("requests_hc")
+				m.PromReqInc("200", GetServerTypeToStr(ServerTypeHC), path)
 			} else {
-				srv.config.metric.Inc("requests_service")
+				m.Inc("requests_service")
+				m.PromReqInc("200", GetServerTypeToStr(ServerTypeSvc), path)
 			}
 		}()
 
@@ -49,17 +55,21 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 	})
 
 	srv.listener.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		m := srv.config.metric
+		path := "/"
 		respBody := fmt.Sprintf("Available routes: \n/ping\n/%s", cfg.hcPath)
 		w.Header().Set("Content-Type", "text/plain")
 
 		go func() {
 
 			if srv.config.hcServer {
-				srv.config.metric.Inc("requests_hc")
+				m.Inc("requests_hc")
+				m.PromReqInc("200", GetServerTypeToStr(ServerTypeHC), path)
 			} else {
-				srv.config.metric.Inc("requests_service")
+				m.Inc("requests_service")
+				m.PromReqInc("200", GetServerTypeToStr(ServerTypeSvc), path)
 			}
-
 		}()
 
 		w.Write([]byte(respBody))
@@ -73,6 +83,7 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 		}
 		srv.listener.HandleFunc(cfg.hcPath, func(w http.ResponseWriter, r *http.Request) {
 			code := 200
+			m := srv.config.metric
 			respBody := srv.config.hc.GetHealthyStr()
 			w.Header().Set("Content-Type", "text/plain")
 			if !srv.config.hc.GetHealthy() {
@@ -93,6 +104,7 @@ func NewHTTPServer(cfg *ServerConfig) (*ServerHTTP, error) {
 					srv.config.event.Send("request", srv.config.name, string(data))
 				}
 				srv.config.metric.Inc("requests_hc")
+				m.PromReqInc("200", GetServerTypeToStr(ServerTypeHC), cfg.hcPath)
 			}()
 
 			w.Write([]byte(respBody))

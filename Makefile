@@ -18,6 +18,16 @@ build-single:
 build-k8sapi:
 	go build -o ./bin/lab-k8sapi-watcher ./cmd/lab-k8sapi-watcher/
 
+build-lbwatcher:
+	go build -o ./bin/lb-watcher ./cmd/lb-watcher/
+
+# lbhc tools
+build-lbhc-monitor:
+	go build -o ./bin/lbhc-monitor ./cmd/lbhc-monitor/
+
+build-lbhc-app:
+	go build -o ./bin/lbhc-app ./cmd/lab-app-server/
+
 build-all:
 	$(MAKE) build
 	$(MAKE) build-k8sapi

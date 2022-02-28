@@ -7,7 +7,12 @@ import (
 	"time"
 
 	"github.com/mtulio/go-lab-api/internal/event"
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+type PromCollector struct {
+	httpReqTotal *prometheus.CounterVec
+}
 
 type MetricsHandler struct {
 	Time time.Time `json:"time"`
@@ -32,6 +37,22 @@ type MetricsHandler struct {
 	ReqCountClient5xx uint64 `json:"reqc_client_5xx"`
 
 	event *event.EventHandler
+
+	PromExporter *PromCollector
+}
+
+func NewPromCollector() *PromCollector {
+	c := &PromCollector{
+		httpReqTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "app_handler_requests_total",
+				Help: "Number of requests to a handler.",
+			},
+			[]string{"code", "type", "path"},
+		),
+	}
+	prometheus.MustRegister(c.httpReqTotal)
+	return c
 }
 
 func NewMetricHandler(e *event.EventHandler) *MetricsHandler {
@@ -45,6 +66,7 @@ func NewMetricHandler(e *event.EventHandler) *MetricsHandler {
 		ReqCountService:     0,
 		ReqCountHC:          0,
 		ReqCountClient:      0,
+		PromExporter:        NewPromCollector(),
 	}
 }
 
@@ -81,6 +103,10 @@ func (m *MetricsHandler) Inc(metric string) {
 	}
 
 	return
+}
+
+func (m *MetricsHandler) PromReqInc(code, stype, path string) {
+	m.PromExporter.httpReqTotal.WithLabelValues(stype, path, code).Inc()
 }
 
 // StartPush is a routing to dump/push metrics to

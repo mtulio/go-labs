@@ -40,6 +40,16 @@ func main() {
 	metric := metric.NewMetricHandler(ev)
 	go metric.StartPusher()
 
+	//prometheus
+	// serverPort := ":9999"
+	// exporterPath := "/metrics"
+	// // prometheus.MustRegister(metric.PromExporter)
+	// go func() {
+	// 	log.Printf("Starting http server on port %s", serverPort)
+	// 	http.Handle(exporterPath, promhttp.Handler())
+	// 	log.Fatal(http.ListenAndServe(serverPort, nil))
+	// }()
+
 	// Watch Target Group and extract/update metrics
 	tgw, err := watcher.NewTargetGroupWatcher(&watcher.TGWatcherOptions{
 		ARN:    *watchTg,
