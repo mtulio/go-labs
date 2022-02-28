@@ -1,4 +1,6 @@
 
+all: build
+
 deps:
 	mkdir -p ./.local ./bin
 
@@ -10,6 +12,7 @@ generate-certs: deps
 
 build: deps
 	go build -o ./bin/lab-app-server ./cmd/lab-app-server/
+	go build -o ./bin/health-check-agent ./cmd/health-check-agent/
 
 # build single service
 build-single:
