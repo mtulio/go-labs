@@ -219,12 +219,22 @@ func (srv *ServerTCP) ServerPortIsOpen() bool {
 func TCPControl(network, address string, c syscall.RawConn) error {
 	var err error
 	c.Control(func(fd uintptr) {
+		// Allow reuse address
 		err = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 		if err != nil {
 			return
 		}
 
 		err = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+		if err != nil {
+			return
+		}
+
+		// Enable/disable linger.
+		// Onoff: 1=on, 0=off.
+		// Linger is the time in seconds: When 'on', should be greater than 0.
+		linger := unix.Linger{Onoff: 0, Linger: int32(20)}
+		err = unix.SetsockoptLinger(int(fd), unix.SOL_SOCKET, unix.SO_LINGER, &linger)
 		if err != nil {
 			return
 		}
