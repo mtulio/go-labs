@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 )
 
 type ServerHTTP struct {
@@ -137,7 +138,7 @@ func (srv *ServerHTTP) Start() {
 				// 	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 				// 	tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				// },
-				MinVersion: tls.VersionTLS13,
+				MinVersion: tls.VersionTLS12,
 				VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 					fmt.Println("> tlsCallback VerifyPeerCertificate: ")
 					fmt.Printf(">> rawCerts: %+v\n", rawCerts)
@@ -166,12 +167,16 @@ func (srv *ServerHTTP) Start() {
 				},
 			},
 		}
-		// if server.shuttingDown() {
-		// 	return ErrServerClosed
-		// }
+		if srv.config.debug {
+			tlsKeysFD, err := os.OpenFile(srv.config.listener.options.DebugTLSKeysLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+			if err != nil {
+				panic(err)
+			}
+			defer tlsKeysFD.Close()
+			server.TLSConfig.KeyLogWriter = tlsKeysFD
+		}
 
 		addr := server.Addr
-
 		if addr == "" {
 			addr = ":https"
 		}

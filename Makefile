@@ -23,7 +23,9 @@ build-k8sapi:
 
 build-all:
 	$(MAKE) build
-	$(MAKE) build-k8sapi
 
 deploy-stack-aws-nlb:
 	cd hack/deploy-stack && . .venv/bin/activate && cdk deploy -f
+
+sync-lab-ec2:
+	./hack/scripts/sync-to-ec2-lab.sh

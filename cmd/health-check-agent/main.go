@@ -21,6 +21,7 @@ var (
 	watchInterval *uint8  = flag.Uint8("watch-interval", 10, "Interval to perform checks to URL.")
 	watchCount    *uint8  = flag.Uint8("watch-count", 1, "Total of checks.")
 	disableKA     *bool   = flag.Bool("no-keep-alive", false, "Total of checks.")
+	dbTlsLogKeys  *string = flag.String("debug-tls-keys-log-file", "", "TLS Keys file")
 )
 
 func init() {
@@ -57,6 +58,7 @@ func init() {
 		log.Printf("Valie profiles are: %+v", profiles)
 		os.Exit(1)
 	}
+
 }
 
 func main() {
@@ -77,10 +79,17 @@ func main() {
 			t.MaxIdleConnsPerHost = -1
 		}
 		t.TLSClientConfig = profiles[*tlsProfile]
+		if *dbTlsLogKeys != "" {
+			tlsKeysFD, err := os.OpenFile(*dbTlsLogKeys, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+			if err != nil {
+				panic(err)
+			}
+			defer tlsKeysFD.Close()
+			t.TLSClientConfig.KeyLogWriter = tlsKeysFD
+		}
 		c := &http.Client{Transport: t}
 
 		// http.DefaultTransport.(*http.Transport).TLSClientConfig = profiles[*tlsProfile]
-
 		resp, err := c.Get(*url)
 		if err != nil {
 			log.Println(fmt.Sprintf("ERROR received from server. Delaying 10s: %s", err))

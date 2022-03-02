@@ -35,6 +35,7 @@ type ServerConfig struct {
 	certPem  string
 	certKey  string
 	debug    bool
+	listener *Listener
 }
 
 func GetProtocolFromStr(proto string) Protocol {

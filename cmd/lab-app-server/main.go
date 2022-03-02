@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	flag "github.com/spf13/pflag"
@@ -25,6 +26,7 @@ var (
 	watchTg      *string = flag.String("watch-target-group-arn", "", "help message for flagname")
 	termTimeout  *uint64 = flag.Uint64("termination-timeout", 300, "help message for flagname")
 	debug        *bool   = flag.Bool("debug", false, "Enable debug mode")
+	dbTlsLogKeys *string = flag.String("debug-tls-keys-log-file", fmt.Sprintf("%s-tlsKeys.log", *appName), "Enable debug TLS Keys Log.")
 	cliGenReqURL *string = flag.String("gen-requests-to-url", "", "Make background requests to URL and measure it.")
 	cliGenReqInt *uint64 = flag.Uint64("gen-requests-interval", 250, "Interval between each requests (milisseconds")
 	cliGenReqTmo *uint8  = flag.Uint8("gen-requests-timeout", 5, "Context timeout for each requests (seconds)")
@@ -62,6 +64,7 @@ func main() {
 		Event:              ev,
 		Metric:             metric,
 		Debug:              *debug,
+		DebugTLSKeysLog:    *dbTlsLogKeys,
 		TerminationTimeout: *termTimeout,
 	}
 
